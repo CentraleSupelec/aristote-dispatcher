@@ -31,7 +31,7 @@ External chart :
 ### General
 | Name                  | Description                                        | Value |
 | --------------------- | -------------------------------------------------- | ----- |
-| `model`               | Model name from HuggingFace                        | `""`  |
+| `model`*               | Model name from HuggingFace                        | `""`  |
 | `quantization`        | Quantization alogrithm of the used model           | `""`  |
 | `dtype`               | Dtype of the model                                 | `""`  |
 | `huggingface_token`   | Token used for pulling models from huggingface     | `""`  |
@@ -40,6 +40,8 @@ External chart :
 
 This should be a list of all the tokens wanted and their respective priority
 The highest number token is the first one to be answered.
+
+This is mandatory for an internal database, as it will be used to set up the database. If you are using an external database, you can fill it up by yourself.
 
 | Name                  | Description                                        | Value |
 | --------------------- | -------------------------------------------------- | ----- |
@@ -85,7 +87,7 @@ The inference server is using the GPU for ingereing on the LLM. We are using the
 | `inferenceserver.image.pullPolicy`| Pull policy for the image| `Always`  |
 | `inferenceserver.image.tag` | Tag for the image | `latest`  |
 | `inferenceserver.port`| Port used by the consuer port | `8000`|
-| `inferenceserver.ressources`| Ressources specified for the container, should specifiy the gpus | `""` |
+| `inferenceserver.ressources`*| Ressources specified for the container, should specifiy the gpus | `""` |
 | `inferenceserver.replicaCount`| Replica count for the inferenceserver | `1`|
 | `inferenceserver.env`| Env vars to ad to the container | `[]`|
 

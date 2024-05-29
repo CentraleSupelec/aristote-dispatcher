@@ -23,7 +23,7 @@ spec:
               containerPort: {{ .Values.sender.port }}
               protocol: TCP
           startupProbe:
-            httpPost:
+            httpGet:
               path: /health
               port: http
             initialDelaySeconds: 5
