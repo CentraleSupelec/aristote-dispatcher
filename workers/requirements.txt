@@ -1,0 +1,13 @@
+pika
+aiohttp
+aiormq
+aio_pika
+quart
+uuid
+mysql-connector-python
+aiomysql
+cryptography
+requests
+fastapi
+httpx
+asyncpg

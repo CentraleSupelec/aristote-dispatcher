@@ -1,0 +1,18 @@
+apiVersion: v1
+name: vllm
+description: |
+  A Helm chart for deploying a vLLM inference server at a large scale
+
+type: application
+version: 0.0.1
+appVersion: "v0.0.1"
+
+dependencies:
+  - name: mysql
+    repository: https://charts.bitnami.com/bitnami
+    version: 10.3.0
+    condition: mysql.enabled
+  - name: postgresql
+    repository: https://charts.bitnami.com/bitnami
+    version: 15.4.1
+    condition: postgresql.enabled

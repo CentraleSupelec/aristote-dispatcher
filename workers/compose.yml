@@ -1,0 +1,57 @@
+services:
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    ports:
+      - 5672:5672  # Port pour la communication AMQP
+      - 15672:15672  # Port pour l'interface web de RabbitMQ
+
+  postgres:
+    image: postgres
+    volumes:
+      - ./init_db/init_postgres.sql:/docker-entrypoint-initdb.d/init.sql
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: test
+    ports:
+      - 5432:5432
+  
+  # mysql:
+  #   image: mysql
+  #   volumes:
+  #     - ./init_db/init_mysql.sql:/docker-entrypoint-initdb.d/init.sql
+  #   environment:
+  #     MYSQL_ROOT_PASSWORD: root
+  #     MYSQL_DATABASE: test
+  #     MYSQL_USER: user
+  #     MYSQL_PASSWORD: password
+  #   ports:
+  #     - "3306:3306"
+
+  sender:
+    build:
+      context: ./sender
+    ports:
+      - 8080:8080
+    environment:
+      LOG_LEVEL: 10
+      RABBITMQ_USER: guest
+      RABBITMQ_PASSWORD: guest
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      DATABASE_TYPE: postgres
+      DB_HOST: postgres
+      DB_USER: user
+      DB_PASSWORD: password
+      DB_DATABASE: test
+
+  consumer:
+    build:
+      context: ./consumer
+    environment:
+      LOG_LEVEL: 10
+      RABBITMQ_USER: guest
+      RABBITMQ_PASSWORD: guest
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      LLM_URL: http://host.docker.internal:50000/v1/chat/completions

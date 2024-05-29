@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-sender
+  labels:
+    {{- include "vllm.labels" . | nindent 4 }}
+spec:
+  type: LoadBalancer
+  ports:
+    - port: {{ .Values.sender.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    app.kubernetes.io/name: {{ include "vllm.fullname" . }}-sender
+    app.kubernetes.io/instance: {{ include "vllm.fullname" . }}-sender

@@ -1,0 +1,5 @@
+aio_pika
+fastapi
+asyncpg
+requests
+aiomysql

@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-consumer
+  labels:
+    {{- include "vllm.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - port: {{ .Values.consumer.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    app.kubernetes.io/name: {{ include "vllm.fullname" . }}-consumer
+    app.kubernetes.io/instance: {{ include "vllm.fullname" . }}-consumer

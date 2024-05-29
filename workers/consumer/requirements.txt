@@ -1,0 +1,2 @@
+httpx
+aio_pika
