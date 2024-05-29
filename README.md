@@ -39,7 +39,7 @@ External chart :
 ### Tokens
 
 This should be a list of all the tokens wanted and their respective priority
-The highest number token is the first one to be answered.
+The lowest number token is the first one to be answered. IT'es their order rather than their importance. 
 
 This is mandatory for an internal database, as it will be used to set up the database. If you are using an external database, you can fill it up by yourself.
 

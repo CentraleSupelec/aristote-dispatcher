@@ -27,23 +27,28 @@ MYSQL_HOST = os.getenv("DB_HOST")
 MYSQL_USER = os.getenv("DB_USER")
 MYSQL_PASSWORD = os.getenv("DB_PASSWORD")
 MYSQL_DB = os.getenv("DB_DATABASE")
+MYSQL_PORT = os.getenv("DB_PORT")
 
 POSTGRES_HOST = os.getenv("DB_HOST")
 POSTGRES_USER = os.getenv("DB_USER")
 POSTGRES_PASSWORD = os.getenv("DB_PASSWORD")
 POSTGRES_DB = os.getenv("DB_DATABASE")
+POSTGRES_PORT = os.getenv("DB_PORT")
+
 
 TIMEOUT = int(os.getenv("TIMEOUT", 30))
 
 app = FastAPI()
 
 async def verify_token(token):
+    result = None
     if USE_MYSQL:
         connection = await aiomysql.connect(
             host=MYSQL_HOST,
             user=MYSQL_USER,
             password=MYSQL_PASSWORD,
-            db=MYSQL_DB
+            db=MYSQL_DB,
+            port = MYSQL_PORT
         )
         async with connection.cursor() as cursor:
             query = "SELECT * FROM users WHERE token = %s"
@@ -58,7 +63,8 @@ async def verify_token(token):
             host=POSTGRES_HOST,
             user=POSTGRES_USER,
             password=POSTGRES_PASSWORD,
-            database=POSTGRES_DB
+            database=POSTGRES_DB, 
+            port = POSTGRES_PORT
         )
         try:
             query = "SELECT * FROM users WHERE token = $1"

@@ -81,11 +81,13 @@ spec:
               value: {{ .Values.database.host | quote }}
             {{ end }}
             - name: DB_USER
-              value: {{ .Values.mysql.auth.username | quote }}
+              value: {{ .Values.database.auth.username | quote }}
             - name: DB_PASSWORD
-              value: {{ .Values.mysql.auth.password | quote }}
+              value: {{ .Values.database.auth.password | quote }}
             - name: DB_DATABASE
-              value: {{ .Values.mysql.auth.database | quote }}
+              value: {{ .Values.database.auth.database | quote }}
+            - name: DB_PORT
+              value: {{ .Values.database.port | quote }}
             {{- with .Values.sender.env }}
             {{ toYaml . | nindent 12 }}
             {{- end }}

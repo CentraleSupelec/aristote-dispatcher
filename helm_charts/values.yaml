@@ -68,6 +68,7 @@ database:
   internal: True
   type: mysql
   host: ""
+  port: 3306
   auth:
     rootPassword: root
     username: user
