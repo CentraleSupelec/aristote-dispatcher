@@ -50,16 +50,38 @@ app.kubernetes.io/name: {{ include "vllm.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
-{{/*
-Create the name of the ReadManyOnly persistent volume to use
-*/}}
-{{- define "vllm.readManyPVCName" -}}
-{{- default (include "vllm.fullname" .) .Values.readManyPVC.name }}
-{{- end }}
 
 {{/*
-The model name used for serving in vLLM. Use model or servedModelName
+Common labels for sender and consumer
 */}}
-{{- define "vllm.usedModelName" -}}
-{{- default .Values.model .Values.servedModelName }}
+{{- define "vllm.labels.consumer" -}}
+helm.sh/chart: {{ include "vllm.chart" . }}
+{{ include "vllm.selectorLabels.consumer" . }}
+{{- if .Chart.AppVersion }}
+app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
+{{- end }}
+app.kubernetes.io/managed-by: {{ .Release.Service }}
+{{- end }}
+
+{{- define "vllm.labels.sender" -}}
+helm.sh/chart: {{ include "vllm.chart" . }}
+{{ include "vllm.selectorLabels.sender" . }}
+{{- if .Chart.AppVersion }}
+app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
+{{- end }}
+app.kubernetes.io/managed-by: {{ .Release.Service }}
+{{- end }}
+
+
+{{/*
+Selector labels for sender and consumer
+*/}}
+{{- define "vllm.selectorLabels.sender" -}}
+app.kubernetes.io/name: {{ include "vllm.fullname" . }}-sender
+app.kubernetes.io/instance: {{ .Release.Name }}
+{{- end }}
+
+{{- define "vllm.selectorLabels.consumer" -}}
+app.kubernetes.io/name: {{ include "vllm.fullname" . }}-consumer
+app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}

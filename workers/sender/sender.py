@@ -15,7 +15,7 @@ logging.basicConfig(level=LOG_LEVEL, format="%(asctime)s:%(levelname)s:%(name)s:
 DATABASE_TYPE = os.getenv("DATABASE_TYPE", "mysql")
 
 USE_MYSQL = DATABASE_TYPE == "mysql"
-USE_POSTGRES = DATABASE_TYPE == "postgres"
+USE_POSTGRES = DATABASE_TYPE == "postgresql"
 
 RABBITMQ_USER = os.getenv("RABBITMQ_USER", "guest")
 RABBITMQ_PASSWORD = os.getenv("RABBITMQ_PASSWORD", "guest")
@@ -27,13 +27,13 @@ MYSQL_HOST = os.getenv("DB_HOST")
 MYSQL_USER = os.getenv("DB_USER")
 MYSQL_PASSWORD = os.getenv("DB_PASSWORD")
 MYSQL_DB = os.getenv("DB_DATABASE")
-MYSQL_PORT = os.getenv("DB_PORT")
+MYSQL_PORT = int(os.getenv("DB_PORT"))
 
 POSTGRES_HOST = os.getenv("DB_HOST")
 POSTGRES_USER = os.getenv("DB_USER")
 POSTGRES_PASSWORD = os.getenv("DB_PASSWORD")
 POSTGRES_DB = os.getenv("DB_DATABASE")
-POSTGRES_PORT = os.getenv("DB_PORT")
+POSTGRES_PORT = int(os.getenv("DB_PORT"))
 
 
 TIMEOUT = int(os.getenv("TIMEOUT", 30))

@@ -2,21 +2,35 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {{ include "vllm.fullname" . }}-sender
+  {{- with .Values.sender.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
 spec:
   replicas: {{ .Values.sender.replicaCount }}
   selector:
     matchLabels:
-      app.kubernetes.io/name: {{ include "vllm.fullname" . }}-sender
-      app.kubernetes.io/instance: {{ include "vllm.fullname" . }}-sender
+      {{- include "vllm.selectorLabels.sender" . | nindent 6 }}
   template:
     metadata:
+      {{- with .Values.sender.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       labels:
-        app.kubernetes.io/name: {{ include "vllm.fullname" . }}-sender
-        app.kubernetes.io/instance: {{ include "vllm.fullname" . }}-sender
+        {{- include "vllm.selectorLabels.sender" . | nindent 8 }}
     spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.sender.podSecurityContext | nindent 8 }}
       containers:
-        - name: sender
-          image: {{ .Values.sender.image.repository }}:{{ .Values.sender.image.tag | default .Chart.AppVersion }}
+        - name: {{ .Chart.Name }}-sender
+          securityContext:
+            {{- toYaml .Values.sender.securityContext | nindent 12 }}
+          image: {{ .Values.sender.image.repository }}:{{ .Values.sender.image.tag }}
           imagePullPolicy: {{ .Values.sender.image.pullPolicy | quote }}
           ports:
             - name: http
@@ -44,8 +58,7 @@ spec:
             - name: WORKER_PORT
               value: {{ .Values.inferenceserver.port | quote}}
             - name: WORKER_NUM
-              value: "{{ .Values.sender.replicaCount }}"
-            {{ if .Values.rabbitmq.enabled}}
+              value: "{{ .Values.consumer.replicaCount }}"
             {{- if .Values.rabbitmq.internal }}
             - name: RABBITMQ_HOST
               valueFrom:
@@ -62,14 +75,23 @@ spec:
                 secretKeyRef:
                   name: {{ .Release.Name }}-rabbitmq-default-user
                   key: password
+            - name: RABBITMQ_PORT
+              value: {{ .Values.rabbitmq.port }}
             {{ else }}
             - name: RABBITMQ_HOST
               value: {{ .Values.rabbitmq.host | quote}}
             - name: RABBITMQ_USER
-              value: {{ .Values.rabbitmq.auth.user | quote}}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ if eq .Values.rabbitmq.existingSecret ""}} rabbitmq-secret {{else}} {{ .Values.rabbitmq.existingSecret }} {{end}}
+                  key: {{ if .Values.rabbitmq.secretKeyOverride }} {{ .Values.rabbitmq.secretKeyOverride.username }} {{ else }} username {{ end }}
             - name: RABBITMQ_PASSWORD
-              value: {{ .Values.rabbitmq.auth.password | quote}}
-            {{ end }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ if eq .Values.rabbitmq.existingSecret ""}} rabbitmq-secret {{else}} {{ .Values.rabbitmq.existingSecret }} {{end}}
+                  key: {{ if .Values.rabbitmq.secretKeyOverride }} {{ .Values.rabbitmq.secretKeyOverride.password }} {{ else }} password {{ end }}
+            - name: RABBITMQ_PORT
+              value: {{ .Values.rabbitmq.port | quote }}
             {{ end }}
             - name: DB_TYPE
               value: {{ .Values.database.type | quote }}
@@ -81,15 +103,35 @@ spec:
               value: {{ .Values.database.host | quote }}
             {{ end }}
             - name: DB_USER
-              value: {{ .Values.database.auth.username | quote }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ if eq .Values.database.existingSecret ""}} database-secret {{else}} {{ .Values.database.existingSecret }} {{end}}
+                  key: {{ if .Values.database.secretKeyOverride }} {{ .Values.database.secretKeyOverride.username }} {{ else }} username {{ end }}
             - name: DB_PASSWORD
-              value: {{ .Values.database.auth.password | quote }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ if eq .Values.database.existingSecret ""}} database-secret {{else}} {{ .Values.database.existingSecret }} {{end}}
+                  key: {{ if .Values.database.secretKeyOverride }} {{ .Values.database.secretKeyOverride.password }} {{ else }} password {{ end }}
             - name: DB_DATABASE
               value: {{ .Values.database.auth.database | quote }}
             - name: DB_PORT
               value: {{ .Values.database.port | quote }}
+            - name: LOG_LEVEL
+              value: {{ .Values.sender.loglevel | quote }}
             {{- with .Values.sender.env }}
             {{ toYaml . | nindent 12 }}
             {{- end }}
           resources:
             {{- toYaml .Values.sender.resources | nindent 12 }}
+      {{- with .Values.sender.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.sender.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

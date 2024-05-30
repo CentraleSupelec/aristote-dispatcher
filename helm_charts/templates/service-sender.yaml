@@ -3,7 +3,7 @@ kind: Service
 metadata:
   name: {{ .Release.Name }}-sender
   labels:
-    {{- include "vllm.labels" . | nindent 4 }}
+    {{- include "vllm.labels.sender" . | nindent 4 }}
 spec:
   type: LoadBalancer
   ports:
@@ -12,5 +12,4 @@ spec:
       protocol: TCP
       name: http
   selector:
-    app.kubernetes.io/name: {{ include "vllm.fullname" . }}-sender
-    app.kubernetes.io/instance: {{ include "vllm.fullname" . }}-sender
+    {{- include "vllm.selectorLabels.sender" . | nindent 4 }}

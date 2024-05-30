@@ -1,7 +1,10 @@
 model: ""
+servedModelName: ""
 quantization: "" 
-dtype: "" 
+dtype: ""
+gpuMemoryUtilization: "" 
 huggingface_token : ""
+
 
 tokens: # Highest priority is more important
   - token: ""
@@ -21,7 +24,14 @@ sender:
       cpu: 1000m
       memory: 2048Mi
   replicaCount: 1
+  logLevel: 20
   env: []
+  podAnnotations: {}
+  podSecurityContext: {}
+  securityContext: {}
+  tolerations: []
+  affinity: {}
+  nodeSelector: {}  
 
 consumer:
   image:
@@ -37,7 +47,15 @@ consumer:
       cpu: 1000m
       memory: 2048Mi
   replicaCount: 2
+  logLevel: 20
   env: []
+  annotations: {}
+  podAnnotations: {}
+  podSecurityContext: {}
+  securityContext: {}
+  tolerations: []
+  affinity: {}
+  nodeSelector: {} 
 
 inferenceserver:
   image:
@@ -54,21 +72,32 @@ inferenceserver:
       memory: 1024Mi
       nvidia.com/gpu: 1
   env: []
+  securityContext: {}
   suffix: /v1/chat/completions
 
 rabbitmq:
-  enabled: True
   internal: True
-  auth:
-    user: ""
+  existingSecret: ""
+  secretKeyOverride:
+    enabled: False
+    username: ""
     password: ""
   host: ""
+  port: 5672
+  auth:
+    username: user
+    password: password
 
 database:
-  internal: True
+  internal: False
   type: mysql
   host: ""
   port: 3306
+  existingSecret: ""
+  secretKeyOverride:
+    enabled: False
+    username: ""
+    password: ""
   auth:
     rootPassword: root
     username: user
@@ -77,7 +106,7 @@ database:
   initdbScriptsConfigMap: database-config-map
 
 mysql:
-  enabled: True
+  enabled: False
   auth:
     rootPassword: root
     username: user
@@ -111,19 +140,6 @@ ingress:
     hosts:
        - hostname
 
-# Add nodeSelectors to target specific GPU types
-nodeSelector: {}
-
 imagePullSecrets: []
 nameOverride: ""
 fullnameOverride: ""
-
-podAnnotations: {}
-
-podSecurityContext: {}
-
-securityContext: {}
-
-tolerations: []
-
-affinity: {}

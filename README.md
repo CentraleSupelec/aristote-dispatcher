@@ -98,7 +98,6 @@ Rabbitmq is used for the queue system in the architecture. We are using the rabb
 
 | Name                  | Description                                        | Value |
 | --------------------- | -------------------------------------------------- | ----- |
-| `rabbitmq.enabled`| True is the architecture is using rabbitmq | `True`  |
 | `rabbitmq.internal`| Used to specify if it is an internal rabbitmq cluster or not| `True`  |
 | `rabbitmq.auth.user` | Username for rabbitmq (if external server) | `""`  |
 | `rabbitmq.auth.password`| Password for rabbitmq (if external server) | `""`|
