@@ -1,53 +1,57 @@
+{{ $val := .Values }}
+{{ $file := . }}
+{{- range .Values.models }}
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: {{ include "vllm.fullname" . }}-consumer 
-  {{- with .Values.consumer.annotations }}
+  name: {{ include "vllm.fullname" $file }}-consumer-{{ .name }}
+  {{- with $val.consumer.annotations }}
   annotations:
     {{- toYaml . | nindent 4 }}
   {{- end }}   
   labels:
-    {{- include "vllm.labels.consumer" . | nindent 4 }}
+    {{- include "vllm.labels.consumer" $file | nindent 4 }}
 spec:
-  replicas: {{ .Values.consumer.replicaCount }}
+  replicas: {{ .replicaCount }}
+  serviceName: {{ $file.Release.Name }}-consumer-{{ .name }}
   selector:
     matchLabels:
-      {{- include "vllm.selectorLabels.consumer" . | nindent 6 }}
+      {{- include "vllm.selectorLabels.consumer" $file | nindent 6 }}
   template:
     metadata:
-      {{- with .Values.consumer.podAnnotations }}
+      {{- with $val.consumer.podAnnotations }}
       annotations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       labels:
-        {{- include "vllm.selectorLabels.consumer" . | nindent 8 }}
+        {{- include "vllm.selectorLabels.consumer" $file | nindent 8 }}
     spec:
-      {{- with .Values.imagePullSecrets }}
+      {{- with $val.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       securityContext:
-        {{- toYaml .Values.consumer.podSecurityContext | nindent 8 }}
+        {{- toYaml $val.consumer.podSecurityContext | nindent 8 }}
       containers:
-        - name: {{ .Chart.Name }}-vllm
+        - name: {{ .name }}-vllm
           securityContext:
-            {{- toYaml .Values.inferenceserver.securityContext | nindent 12 }}
-          image: "{{ .Values.inferenceserver.image.repository }}:{{ .Values.inferenceserver.image.tag | default .Chart.AppVersion }}"
-          imagePullPolicy: {{ .Values.inferenceserver.image.pullPolicy | quote }}
+            {{- toYaml $val.inferenceserver.securityContext | nindent 12 }}
+          image: "{{ $val.inferenceserver.image.repository }}:{{ $val.inferenceserver.image.tag }}"
+          imagePullPolicy: {{ $val.inferenceserver.image.pullPolicy | quote }}
           command:
           - python3
           - -m
           - vllm.entrypoints.openai.api_server
           - --model
-          - {{ .Values.model | quote }}
-          {{ if not (eq .Values.servedModelName "")}}- --served_model_name={{ .Values.servedModelName }} {{ end }}
-          {{ if not (eq .Values.quantization "")}}- --quantization={{ .Values.quantization }} {{ end }}
-          {{ if not (eq .Values.dtype "")}}- --dtype={{ .Values.dtype }} {{ end }}
-          {{ if not (eq .Values.gpuMemoryUtilization "")}}- --gpu_memory_utilization={{ .Values.gpuMemoryUtilization }} {{ end }}
+          - {{ .model | quote }}
+          {{ if not (eq .servedModelName "")}}- --served_model_name={{ .servedModelName }} {{ end }}
+          {{ if not (eq .quantization "")}}- --quantization={{ .quantization }} {{ end }}
+          {{ if not (eq .dtype "")}}- --dtype={{ .dtype }} {{ end }}
+          {{ if not (eq .gpuMemoryUtilization "")}}- --gpu_memory_utilization={{ .gpuMemoryUtilization }} {{ end }}
           - --trust-remote-code
           ports:
             - name: http
-              containerPort: {{ .Values.inferenceserver.port }}
+              containerPort: {{ $val.inferenceserver.port }}
               protocol: TCP
           startupProbe:
             httpGet:
@@ -64,23 +68,20 @@ spec:
             initialDelaySeconds: 10
             periodSeconds: 5
           resources:
-            {{- toYaml .Values.inferenceserver.resources | nindent 12 }}
+            {{- toYaml $val.inferenceserver.resources | nindent 12 }}
           env:
             - name: PORT 
-              value: {{ .Values.inferenceserver.port | quote }}
+              value: {{ $val.inferenceserver.port | quote }}
             - name: HF_TOKEN
-              value: {{ .Values.huggingface_token | quote }}
-            {{- with .Values.inferenceserver.env }}
+              value: {{ $val.huggingface_token | quote }}
+            {{- with $val.inferenceserver.env }}
             {{ toYaml . | nindent 12 }}
             {{- end }}
-          volumeMounts:
-            - mountPath: /dev/shm
-              name: dshm
-        - name: {{ .Chart.Name }}-consumer
+        - name: {{ .name }}-consumer
           securityContext:
-            {{- toYaml .Values.consumer.securityContext | nindent 12 }}
-          image: "{{ .Values.consumer.image.repository }}:{{ .Values.consumer.image.tag }}"
-          imagePullPolicy: {{ .Values.consumer.image.pullPolicy | quote }}
+            {{- toYaml $val.consumer.securityContext | nindent 12 }}
+          image: "{{ $val.consumer.image.repository }}:{{ $val.consumer.image.tag }}"
+          imagePullPolicy: {{ $val.consumer.image.pullPolicy | quote }}
           livenessProbe:
             exec:
               command:
@@ -96,68 +97,68 @@ spec:
             periodSeconds: 30
             failureThreshold: 10
           resources:
-            {{- toYaml .Values.consumer.resources | nindent 12 }}
+            {{- toYaml $val.consumer.resources | nindent 12 }}
           env:
             - name: POD_NAME
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.name
             - name: SERVICE_NAME
-              value: {{ .Release.Name }}-consumer
+              value: {{ $file.Release.Name }}-consumer-{{ .name }}
             - name: TARGET_PORT
-              value: {{ .Values.inferenceserver.port | quote }}
+              value: {{ $val.inferenceserver.port | quote }}
             - name: SUFFIX
-              value: {{ .Values.inferenceserver.suffix | quote }}
-            {{- if .Values.rabbitmq.internal }}
+              value: ""
+            {{- if $val.rabbitmq.internal }}
             - name: RABBITMQ_HOST
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Release.Name }}-rabbitmq-default-user
+                  name: {{ $file.Release.Name }}-rabbitmq-default-user
                   key: host
             - name: RABBITMQ_USER
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Release.Name }}-rabbitmq-default-user
+                  name: {{ $file.Release.Name }}-rabbitmq-default-user
                   key: username
             - name: RABBITMQ_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Release.Name }}-rabbitmq-default-user
+                  name: {{ $file.Release.Name }}-rabbitmq-default-user
                   key: password
             {{ else }}
             - name: RABBITMQ_HOST
-              value: {{ .Values.rabbitmq.host | quote}}
+              value: {{ $val.rabbitmq.host | quote}}
             - name: RABBITMQ_USER
               valueFrom:
                 secretKeyRef:
-                  name: {{ if eq .Values.rabbitmq.existingSecret ""}}rabbitmq-secret {{else}} {{ .Values.rabbitmq.existingSecret }} {{end}}
-                  key: {{ if .Values.rabbitmq.secretKeyOverride }} {{ .Values.rabbitmq.secretKeyOverride.username }} {{ else }} username {{ end }}
+                  name: {{ if eq $val.rabbitmq.existingSecret ""}}rabbitmq-secret {{else}} {{ $val.rabbitmq.existingSecret }} {{end}}
+                  key: {{ if $val.rabbitmq.secretKeyOverride }} {{ $val.rabbitmq.secretKeyOverride.username }} {{ else }} username {{ end }}
             - name: RABBITMQ_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ if eq .Values.rabbitmq.existingSecret ""}}rabbitmq-secret {{else}} {{ .Values.rabbitmq.existingSecret }} {{end}}
-                  key: {{ if .Values.rabbitmq.secretKeyOverride }} {{ .Values.rabbitmq.secretKeyOverride.password }} {{ else }} password {{ end }}
+                  name: {{ if eq $val.rabbitmq.existingSecret ""}}rabbitmq-secret {{else}} {{ $val.rabbitmq.existingSecret }} {{end}}
+                  key: {{ if $val.rabbitmq.secretKeyOverride }} {{ $val.rabbitmq.secretKeyOverride.password }} {{ else }} password {{ end }}
             {{ end }}
             - name: RABBITMQ_PORT
-              value: {{ .Values.rabbitmq.port | quote }}
+              value: {{ $val.rabbitmq.port | quote }}
             - name: LOG_LEVEL
-              value: {{ .Values.consumer.loglevel | quote }}
-            {{- with .Values.consumer.env }}
+              value: {{ $val.consumer.logLevel | quote }}
+            - name: MODEL
+              value: {{ .model | quote }}
+            {{- with $val.consumer.env }}
             {{ toYaml . | nindent 12 }}
             {{- end }}
-      volumes:
-         - name: dshm
-           emptyDir:
-              medium: Memory
-      {{- with .Values.consumer.nodeSelector }}
+      {{- with $val.consumer.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- with .Values.consumer.affinity }}
+      {{- with $val.consumer.affinity }}
       affinity:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- with .Values.consumer.tolerations }}
+      {{- with $val.consumer.tolerations }}
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+---
+{{- end }}

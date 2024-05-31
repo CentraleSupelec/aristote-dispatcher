@@ -58,7 +58,7 @@ spec:
             - name: WORKER_PORT
               value: {{ .Values.inferenceserver.port | quote}}
             - name: WORKER_NUM
-              value: "{{ .Values.consumer.replicaCount }}"
+              value: "{{ .Values.sender.replicaCount }}"
             {{- if .Values.rabbitmq.internal }}
             - name: RABBITMQ_HOST
               valueFrom:
@@ -76,7 +76,9 @@ spec:
                   name: {{ .Release.Name }}-rabbitmq-default-user
                   key: password
             - name: RABBITMQ_PORT
-              value: {{ .Values.rabbitmq.port }}
+              value: "5672"
+            - name: RABBITMQ_MANAGEMENT_PORT
+              value: "15672"
             {{ else }}
             - name: RABBITMQ_HOST
               value: {{ .Values.rabbitmq.host | quote}}
@@ -92,6 +94,8 @@ spec:
                   key: {{ if .Values.rabbitmq.secretKeyOverride }} {{ .Values.rabbitmq.secretKeyOverride.password }} {{ else }} password {{ end }}
             - name: RABBITMQ_PORT
               value: {{ .Values.rabbitmq.port | quote }}
+            - name: RABBITMQ_MANAGEMENT_PORT
+              value: {{ .Values.rabbitmq.managementPort | quote }}
             {{ end }}
             - name: DB_TYPE
               value: {{ .Values.database.type | quote }}
@@ -117,9 +121,9 @@ spec:
             - name: DB_PORT
               value: {{ .Values.database.port | quote }}
             - name: LOG_LEVEL
-              value: {{ .Values.sender.loglevel | quote }}
+              value: {{ .Values.sender.logLevel | quote }}
             {{- with .Values.sender.env }}
-            {{ toYaml . | nindent 12 }}
+              {{ toYaml . | nindent 12 }}
             {{- end }}
           resources:
             {{- toYaml .Values.sender.resources | nindent 12 }}

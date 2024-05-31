@@ -1,15 +1,20 @@
+{{ $val := .Values }}
+{{ $file := . }}
+{{- range .Values.models }}
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ .Release.Name }}-consumer
+  name: {{ $file.Release.Name }}-consumer-{{ .name }}
   labels:
-    {{- include "vllm.labels.consumer" . | nindent 4 }}
+    {{- include "vllm.labels.consumer" $file | nindent 4 }}
 spec:
   type: LoadBalancer
   ports:
-    - port: {{ .Values.consumer.port }}
+    - port: {{ $val.consumer.port }}
       targetPort: http
       protocol: TCP
       name: http
   selector:
-    {{- include "vllm.selectorLabels.consumer" . | nindent 4 }}
+    {{- include "vllm.selectorLabels.consumer" $file | nindent 4 }}
+---
+{{- end}}

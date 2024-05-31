@@ -1,14 +1,18 @@
-model: ""
-servedModelName: ""
-quantization: "" 
-dtype: ""
-gpuMemoryUtilization: "" 
-huggingface_token : ""
+models:
+  - name: name #must be lowercase
+    model: ""
+    servedModelName: ""
+    quantization: "" 
+    dtype: ""
+    gpuMemoryUtilization: "" 
+    huggingface_token : ""
+    replicaCount: 1
 
 
-tokens: # Highest priority is more important
-  - token: ""
+tokens: # Lowest priority is more important
+  - token: token
     priority: 1
+    threshold: 10
 
 sender:
   image:
@@ -16,15 +20,15 @@ sender:
     pullPolicy: IfNotPresent
     tag: latest
   port: 8080
-  ressources:
+  resources:
     requests:
       cpu: 500m
-      memory: 1024Mi
+      memory: "1024Mi"
     limits:
       cpu: 1000m
-      memory: 2048Mi
+      memory: "2048Mi"
   replicaCount: 1
-  logLevel: 20
+  logLevel: "20"
   env: []
   podAnnotations: {}
   podSecurityContext: {}
@@ -39,15 +43,15 @@ consumer:
     pullPolicy: IfNotPresent
     tag: latest
   port: 8080
-  ressources:
+  resources:
     requests:
       cpu: 500m
-      memory: 1024Mi
+      memory: "512Mi"
     limits:
       cpu: 1000m
-      memory: 2048Mi
-  replicaCount: 2
-  logLevel: 20
+      memory: "1024Mi"
+  replicaCount: 1
+  logLevel: "20"
   env: []
   annotations: {}
   podAnnotations: {}
@@ -66,14 +70,14 @@ inferenceserver:
   resources:
     requests:
       cpu: 500m
-      memory: 512Mi
+      memory: "512Mi"
     limits:
-      cpu: 1000m
-      memory: 1024Mi
+      cpu: 10000m
+      memory: "64Gi"
       nvidia.com/gpu: 1
   env: []
-  securityContext: {}
-  suffix: /v1/chat/completions
+  podAnnotations: {}
+  podSecurityContext: {}
 
 rabbitmq:
   internal: True
@@ -83,13 +87,14 @@ rabbitmq:
     username: ""
     password: ""
   host: ""
-  port: 5672
+  port: "5672"
+  managementPort: "15672"
   auth:
     username: user
     password: password
 
 database:
-  internal: False
+  internal: True
   type: mysql
   host: ""
   port: 3306
@@ -106,7 +111,7 @@ database:
   initdbScriptsConfigMap: database-config-map
 
 mysql:
-  enabled: False
+  enabled: True
   auth:
     rootPassword: root
     username: user
@@ -138,7 +143,7 @@ ingress:
   tls: 
   - secretName: secret-tls-vllm
     hosts:
-       - hostname
+      - hostname
 
 imagePullSecrets: []
 nameOverride: ""
