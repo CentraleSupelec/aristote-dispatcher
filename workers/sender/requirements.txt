@@ -3,3 +3,4 @@ fastapi
 asyncpg
 requests
 aiomysql
+httpx

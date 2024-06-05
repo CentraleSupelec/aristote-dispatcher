@@ -1,9 +1,10 @@
 CREATE TABLE users (
     id SERIAL PRIMARY KEY,
     token VARCHAR(255),
-    priority INT NOT NULL
+    priority INT NOT NULL,
+    threshold INT NOT NULL
 );
 
-INSERT INTO users (token, priority) VALUES 
-('Token with lower priority', 1),
-('Token with higher priority', 2);
+INSERT INTO users (token, priority, threshold) VALUES 
+('Token with lower priority', 1, 5),
+('Token with higher priority', 2, 10);

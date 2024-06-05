@@ -34,12 +34,12 @@ services:
     ports:
       - 8080:8080
     environment:
-      LOG_LEVEL: 10
+      LOG_LEVEL: 20
       RABBITMQ_USER: guest
       RABBITMQ_PASSWORD: guest
       RABBITMQ_HOST: rabbitmq
       RABBITMQ_PORT: 5672
-      DATABASE_TYPE: postgres
+      DATABASE_TYPE: postgresql
       DB_HOST: postgres
       DB_USER: user
       DB_PASSWORD: password
@@ -49,9 +49,10 @@ services:
     build:
       context: ./consumer
     environment:
-      LOG_LEVEL: 10
+      LOG_LEVEL: 20
+      MODEL: casperhansen/mixtral-instruct-awq
       RABBITMQ_USER: guest
       RABBITMQ_PASSWORD: guest
       RABBITMQ_HOST: rabbitmq
       RABBITMQ_PORT: 5672
-      LLM_URL: http://host.docker.internal:50000/v1/chat/completions
+      LLM_URL: http://host.docker.internal:50000
