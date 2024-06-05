@@ -1,8 +1,5 @@
 # Aristote Prioritizer, an open-source prioritizer for LLM inference
 
-## TODO
-- ajouté issue timeout
-
 ## Table of Contents
 
 - [Introduction](#introduction)
@@ -49,7 +46,7 @@ Let's deep into the steps shown above.
 
 ## Configuration
 
-In this section, we detail all the environment variables you can set to configure the sender and the consumer, the required and optional ones and their default value.
+In this section, we detail all the environment variables you can set to configure the sender and the consumer, the required and optional ones and their default value. You can configure these variables using Helm Chart (more information in the `README.md` at the root of this repository).
 
 ### Sender
 

@@ -50,6 +50,8 @@ This is mandatory for an internal database, as it will be used to set up the dat
 
 ### Sender
 
+For more informations on the variables, see in `workers/README.md`.
+
 The sender is the python block which reproduces the API and sends the message down to rabbitmq queue.
 
 | Name                  | Description                                        | Value |
