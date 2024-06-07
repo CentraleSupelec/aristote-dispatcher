@@ -47,8 +47,7 @@ app = FastAPI()
 
 models ={
     "object": "list",
-    "data": [],
-    "object": "list"
+    "data": []
     }
 available_models = []
 async def update_available_models():
@@ -240,10 +239,10 @@ async def proxy(request: Request, call_next):
     
     llm_url = rpc_response.body.decode()
     logging.info(f"LLM Url received : {llm_url}")
-    http_client = AsyncClient(base_url=llm_url)
+    http_client = AsyncClient(base_url=llm_url, timeout=60.0)
     req = http_client.build_request(
         method=request.method,
-        url=request.url.path, 
+        url=request.url.path,
         content=body
     )
     logging.info(f"request: \nmethod: {request.method}\nurl: {request.url.path}\ncontent: {body}")
