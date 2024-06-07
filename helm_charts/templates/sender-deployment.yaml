@@ -97,7 +97,7 @@ spec:
             - name: RABBITMQ_MANAGEMENT_PORT
               value: {{ .Values.rabbitmq.managementPort | quote }}
             {{ end }}
-            - name: DB_TYPE
+            - name: DATABASE_TYPE
               value: {{ .Values.database.type | quote }}
             {{ if .Values.database.internal }}
             - name: DB_HOST
