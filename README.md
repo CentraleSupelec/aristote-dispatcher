@@ -33,7 +33,7 @@ List of all the models to deploy in the application. It can be multiple models.
 | `dtype`               | Dtype of the model                                 | `""`  |
 | `gpuMemoryUtilisation`| Maximum GPU memory utilisation for the GPU | `0.90`|
 | `huggingface_token`   | Token used for pulling models from huggingface     | `""`  |
-| `ReplicaCount`| Replica count for the model | `1`|
+| `replicaCount`| Replica count for the model | `1`|
 
 ### Tokens
 
