@@ -86,12 +86,12 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: {{ if eq .Values.rabbitmq.existingSecret ""}} rabbitmq-secret {{else}} {{ .Values.rabbitmq.existingSecret }} {{end}}
-                  key: {{ if .Values.rabbitmq.secretKeyOverride }} {{ .Values.rabbitmq.secretKeyOverride.username }} {{ else }} username {{ end }}
+                  key: {{ if .Values.rabbitmq.secretKeyOverride.enabled }} {{ .Values.rabbitmq.secretKeyOverride.username }} {{ else }} username {{ end }}
             - name: RABBITMQ_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: {{ if eq .Values.rabbitmq.existingSecret ""}} rabbitmq-secret {{else}} {{ .Values.rabbitmq.existingSecret }} {{end}}
-                  key: {{ if .Values.rabbitmq.secretKeyOverride }} {{ .Values.rabbitmq.secretKeyOverride.password }} {{ else }} password {{ end }}
+                  key: {{ if .Values.rabbitmq.secretKeyOverride.enabled }} {{ .Values.rabbitmq.secretKeyOverride.password }} {{ else }} password {{ end }}
             - name: RABBITMQ_PORT
               value: {{ .Values.rabbitmq.port | quote }}
             - name: RABBITMQ_MANAGEMENT_PORT
@@ -110,12 +110,12 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: {{ if eq .Values.database.existingSecret ""}} database-secret {{else}} {{ .Values.database.existingSecret }} {{end}}
-                  key: {{ if .Values.database.secretKeyOverride }} {{ .Values.database.secretKeyOverride.username }} {{ else }} username {{ end }}
+                  key: {{ if .Values.database.secretKeyOverride.enabled }} {{ .Values.database.secretKeyOverride.username }} {{ else }} username {{ end }}
             - name: DB_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: {{ if eq .Values.database.existingSecret ""}} database-secret {{else}} {{ .Values.database.existingSecret }} {{end}}
-                  key: {{ if .Values.database.secretKeyOverride }} {{ .Values.database.secretKeyOverride.password }} {{ else }} password {{ end }}
+                  key: {{ if .Values.database.secretKeyOverride.enabled }} {{ .Values.database.secretKeyOverride.password }} {{ else }} password {{ end }}
             - name: DB_DATABASE
               value: {{ .Values.database.auth.database | quote }}
             - name: DB_PORT
