@@ -47,7 +47,7 @@ spec:
           {{ if not (eq .servedModelName "")}}- --served_model_name={{ .servedModelName }} {{ end }}
           {{ if not (eq .quantization "")}}- --quantization={{ .quantization }} {{ end }}
           {{ if not (eq .dtype "")}}- --dtype={{ .dtype }} {{ end }}
-          {{ if not (eq .gpuMemoryUtilization "")}}- --gpu_memory_utilization={{ .gpuMemoryUtilization }} {{ end }}
+          {{ if not (eq .gpuMemoryUtilization "")}}- --gpu-memory-utilization={{ .gpuMemoryUtilization }} {{ end }}
           - --trust-remote-code
           ports:
             - name: http
