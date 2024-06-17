@@ -6,6 +6,10 @@ models:
     dtype: ""
     gpuMemoryUtilization: "" 
     huggingface_token : ""
+    ropeScaling:
+      enabled: false
+      jsonConfiguration: "{\"type\":\"dynamic\",\"factor\":4.0}"
+      theta: "500000"
     replicaCount: 1
 
 

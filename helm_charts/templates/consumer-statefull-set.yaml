@@ -48,6 +48,8 @@ spec:
           {{ if not (eq .quantization "")}}- --quantization={{ .quantization }} {{ end }}
           {{ if not (eq .dtype "")}}- --dtype={{ .dtype }} {{ end }}
           {{ if not (eq .gpuMemoryUtilization "")}}- --gpu-memory-utilization={{ .gpuMemoryUtilization }} {{ end }}
+          {{ if .ropeScaling.enabled }}- --rope-scaling={{ .ropeScaling.jsonConfiguration }} {{ end }}
+          {{ if and .ropeScaling.enabled (not (eq .ropeScaling.theta "")) }}- --rope-theta={{ .ropeScaling.theta }} {{ end }}
           - --trust-remote-code
           ports:
             - name: http
