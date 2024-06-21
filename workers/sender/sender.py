@@ -239,7 +239,7 @@ async def proxy(request: Request, call_next):
     
     llm_url = rpc_response.body.decode()
     logging.info(f"LLM Url received : {llm_url}")
-    http_client = AsyncClient(base_url=llm_url, timeout=60.0)
+    http_client = AsyncClient(base_url=llm_url, timeout=600.0)
     req = http_client.build_request(
         method=request.method,
         url=request.url.path,
