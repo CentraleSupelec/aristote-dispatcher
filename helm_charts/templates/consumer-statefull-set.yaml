@@ -44,10 +44,24 @@ spec:
           - vllm.entrypoints.openai.api_server
           - --model
           - {{ .model | quote }}
-          {{ if not (eq .servedModelName "")}}- --served_model_name={{ .servedModelName }} {{ end }}
-          {{ if not (eq .quantization "")}}- --quantization={{ .quantization }} {{ end }}
-          {{ if not (eq .dtype "")}}- --dtype={{ .dtype }} {{ end }}
-          {{ if not (eq .gpuMemoryUtilization "")}}- --gpu-memory-utilization={{ .gpuMemoryUtilization }} {{ end }}
+          {{- if not (eq .servedModelName "")}}
+          - --served_model_name={{ .servedModelName }}
+          {{- end }}
+          {{- if not (eq .quantization "")}}
+          - --quantization={{ .quantization }}
+          {{- end }}
+          {{- if not (eq .dtype "")}}
+          - --dtype={{ .dtype }}
+          {{- end }}
+          {{- if not (eq .gpuMemoryUtilization "")}}
+          - --gpu-memory-utilization={{ .gpuMemoryUtilization }}
+          {{- end }}
+          {{- if and .ropeScaling .ropeScaling.enabled }}
+          - --rope-scaling={{ .ropeScaling.jsonConfiguration }}
+          {{- if (not (eq .ropeScaling.theta "")) }}
+          - --rope-theta={{ .ropeScaling.theta }}
+          {{- end }}
+          {{- end }}
           - --trust-remote-code
           ports:
             - name: http
