@@ -48,8 +48,8 @@ app = FastAPI()
 models ={
     "object": "list",
     "data": []
-    }
-available_models = []
+    } # object return by endpoint /v1/models
+available_models = [] # list of available model names
 async def update_available_models():
     # TODO: ajouter le exchange name en variable d'env et l'utiliser ici et dans le RPCClient
     global models
@@ -222,7 +222,7 @@ async def proxy(request: Request, call_next):
         )
     
     requested_model = json_body["model"]
-    if requested_model not in models:
+    if requested_model not in available_models:
         await update_available_models()
         if requested_model not in available_models:
             return JSONResponse(content={"error": "Unknown model"}, status_code=404)
@@ -234,7 +234,13 @@ async def proxy(request: Request, call_next):
     logging.info("rpc client connected")
     rpc_response = await rpc_client.call(priority, threshold, requested_model)
     if type(rpc_response)==int:
-        return JSONResponse(content={"error": "Too many people using the service"}, status_code=503)
+        response_content = {"error": "Too many people using the service"}
+        if json_body["stream"]:
+            # in case of stream, we set status code to 200 to avoid OpenWebUI to crash
+            # TODO: add an attribute in the database to know if its a streaming token or not rather than checking the JSON body as now.
+            return PlainTextResponse(content=response_content, status_code=200)
+        else:
+            return JSONResponse(content=response_content, status_code=503)
     logging.info("rpc response received")
     
     llm_url = rpc_response.body.decode()
