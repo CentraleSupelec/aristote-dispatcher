@@ -48,8 +48,8 @@ app = FastAPI()
 models ={
     "object": "list",
     "data": []
-    }
-available_models = []
+    } # object return by endpoint /v1/models
+available_models = [] # list of available model names
 async def update_available_models():
     # TODO: ajouter le exchange name en variable d'env et l'utiliser ici et dans le RPCClient
     global models
@@ -222,7 +222,7 @@ async def proxy(request: Request, call_next):
         )
     
     requested_model = json_body["model"]
-    if requested_model not in models:
+    if requested_model not in available_models:
         await update_available_models()
         if requested_model not in available_models:
             return JSONResponse(content={"error": "Unknown model"}, status_code=404)
