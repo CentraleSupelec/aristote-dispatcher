@@ -6,5 +6,5 @@ CREATE TABLE users (
 );
 
 INSERT INTO users (token, priority, threshold) VALUES 
-('Token with lower priority', 1, 5),
-('Token with higher priority', 2, 10);
+('Token-with-lower-priority', 1, 5),
+('Token-with-higher-priority', 2, 10);
