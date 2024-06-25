@@ -1,28 +1,20 @@
 import os
 import time
 import logging
-import asyncio
 import time
 import json
-import uuid
-import aiomysql
-import asyncpg
 from httpx import AsyncClient
-from typing import MutableMapping
-from aio_pika import connect, ExchangeType, Message, DeliveryMode
-from aio_pika.abc import AbstractChannel, AbstractConnection, AbstractQueue, AbstractIncomingMessage
+from aio_pika import Message
 from fastapi import FastAPI, Request
 from fastapi.responses import StreamingResponse, JSONResponse, PlainTextResponse
 from starlette.background import BackgroundTask, BackgroundTasks
+from contextlib import asynccontextmanager
+from db import Database
+from rpc_client import RPCClient
 
 # TODO: Utiliser BaseSetting du module pydantic_settings
 LOG_LEVEL = int(os.getenv("LOG_LEVEL", logging.INFO)) # CRITICAL = 50 / ERROR = 40 / WARNING = 30 / INFO = 20 / DEBUG = 10 / NOTSET = 0
 logging.basicConfig(level=LOG_LEVEL, format="%(asctime)s:%(levelname)s:%(name)s: %(message)s")
-
-DATABASE_TYPE = os.getenv("DATABASE_TYPE", "mysql")
-
-USE_MYSQL = DATABASE_TYPE == "mysql"
-USE_POSTGRES = DATABASE_TYPE == "postgresql"
 
 RABBITMQ_USER = os.getenv("RABBITMQ_USER", "guest")
 RABBITMQ_PASSWORD = os.getenv("RABBITMQ_PASSWORD", "guest")
@@ -31,25 +23,31 @@ RABBITMQ_PORT = os.getenv("RABBITMQ_PORT", 5672)
 RABBITMQ_MANAGEMENT_PORT = os.getenv("RABBITMQ_MANAGEMENT_PORT", 15672)
 RABBITMQ_URL = f"amqp://{RABBITMQ_USER}:{RABBITMQ_PASSWORD}@{RABBITMQ_HOST}:{RABBITMQ_PORT}/"
 
-MYSQL_HOST = os.getenv("DB_HOST")
-MYSQL_USER = os.getenv("DB_USER")
-MYSQL_PASSWORD = os.getenv("DB_PASSWORD")
-MYSQL_DB = os.getenv("DB_DATABASE")
-MYSQL_PORT = int(os.getenv("DB_PORT", 3306))
+database = None
 
-POSTGRES_HOST = os.getenv("DB_HOST")
-POSTGRES_USER = os.getenv("DB_USER")
-POSTGRES_PASSWORD = os.getenv("DB_PASSWORD")
-POSTGRES_DB = os.getenv("DB_DATABASE")
-POSTGRES_PORT = int(os.getenv("DB_PORT", 5432))
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    print("Opening database connection")
+    global database
+    database = await Database.init_database()
 
-app = FastAPI()
+    print("Database connection opened")
+
+    yield
+
+    await database.close()
+
+
+app = FastAPI(lifespan=lifespan)
+
+
 
 models ={
     "object": "list",
     "data": []
     } # object return by endpoint /v1/models
 available_models = [] # list of available model names
+
 async def update_available_models():
     # TODO: ajouter le exchange name en variable d'env et l'utiliser ici et dans le RPCClient
     global models
@@ -70,107 +68,6 @@ async def update_available_models():
                     ]
     
 
-async def verify_token(token):
-    result = None
-    if USE_MYSQL:
-        connection = await aiomysql.connect(
-            host=MYSQL_HOST,
-            port=MYSQL_PORT,
-            user=MYSQL_USER,
-            password=MYSQL_PASSWORD,
-            db=MYSQL_DB
-        )
-        async with connection.cursor() as cursor:
-            query = "SELECT * FROM users WHERE token = %s"
-            await cursor.execute(query, (token,))
-            result = await cursor.fetchone()
-            logging.debug(" [x] Result type %r" % type(result))
-            if result:
-                logging.debug("Type result %r" % type(result[1]))
-        connection.close()
-    else:
-        if not USE_POSTGRES:
-            logging.warning("DATABASE_TYPE not specified, defaulting to postgresql")
-        connection = await asyncpg.connect(
-            host=POSTGRES_HOST,
-            port=POSTGRES_PORT,
-            user=POSTGRES_USER,
-            password=POSTGRES_PASSWORD,
-            database=POSTGRES_DB
-        )
-        try:
-            query = "SELECT * FROM users WHERE token = $1"
-            result = await connection.fetchrow(query, token)
-            logging.debug(" [x] Result type %r" % type(result))
-            if result:
-                logging.debug("Type result %r" % type(result[1]))
-        finally:
-            await connection.close()
-    return result
-
-
-class RPCClient:
-    connection: AbstractConnection
-    channel: AbstractChannel
-    callback_queue: AbstractQueue
-
-    def __init__(self) -> None:
-        self.futures: MutableMapping[str, asyncio.Future] = {}
-
-    async def connect(self) -> None:
-        self.connection = await connect(url=RABBITMQ_URL)
-        self.channel = await self.connection.channel()
-        self.callback_queue = await self.channel.declare_queue(exclusive=True)
-        self.exchange = await self.channel.declare_exchange(
-            name="rpc",
-            type=ExchangeType.TOPIC,
-            durable=True
-        )
-        self.consumer_tag = await self.callback_queue.consume(self.on_response, no_ack=True)
-
-    async def close(self) -> None:
-        logging.info("Closing RPC Connection")
-        await self.callback_queue.cancel(self.consumer_tag)
-        await self.connection.close()
-        logging.info("RPC Connection closed")
-
-    async def on_response(self, message: AbstractIncomingMessage) -> None:
-        if message.correlation_id is None:
-            print(f"Bad message {message!r}")
-            return
-
-        future: asyncio.Future = self.futures.pop(message.correlation_id)
-        future.set_result(message)
-
-    async def call(self, priority: int, threshold: int, model: str) -> AbstractIncomingMessage | int:
-        model_queue = await self.channel.get_queue(name=model)
-        nb_messages = model_queue.declaration_result.message_count            
-        logging.info(f"{nb_messages} messages in the model queue : {model}")
-        if nb_messages > threshold:
-            return 1
-        
-        logging.info(f" [x] New request for model {model}")
-        correlation_id = str(uuid.uuid4())
-        loop = asyncio.get_running_loop()
-        future = loop.create_future()
-        self.futures[correlation_id] = future
-
-        await self.exchange.publish(
-            message = Message(
-                body=b"AVAILABLE?",
-                delivery_mode=DeliveryMode.PERSISTENT,
-                correlation_id=correlation_id,
-                reply_to=self.callback_queue.name,
-                priority=priority
-            ),
-            routing_key=model,
-        )
-        logging.info(f" [x] Message push to model queue {model}")
-        response: AbstractIncomingMessage = await future
-        logging.info(f" [.] For model {model}, got LLM URL")
-        return response
-
-
 @app.middleware("http")
 async def proxy(request: Request, call_next):
     start = time.localtime()
@@ -187,7 +84,7 @@ async def proxy(request: Request, call_next):
     token_parts = Authorization.split()
     if len(token_parts) != 2 or token_parts[0] != 'Bearer':
         return JSONResponse(content={"error": "Invalid token"}, status_code=401)
-    user = await verify_token(token_parts[1])
+    user = await database.execute("SELECT * FROM users WHERE token = %s", "SELECT * FROM users WHERE token = $1", token_parts[1])
     if not user:
         return JSONResponse(content={"error": "Unauthorized"}, status_code=401)
     user_id, token, priority, threshold = user

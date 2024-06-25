@@ -1,4 +1,5 @@
-from pydantic_settings import BaseSettings, Field
+from pydantic_settings import BaseSettings
+from pydantic import Field
 import logging
 
 class Settings(BaseSettings):
@@ -14,11 +15,8 @@ class Settings(BaseSettings):
     POD_NAME: str = Field(default="localhost", env='POD_NAME')
     SERVICE_NAME: str = Field(default="", env='SERVICE_NAME')
     TARGET_PORT: int = Field(default=8080, env='TARGET_PORT')
+    LLM_URL: str = Field(default=f"http://{POD_NAME}.{SERVICE_NAME}:{TARGET_PORT}", env='LLM_URL')
 
     @property
     def RABBITMQ_URL(self):
         return f"amqp://{self.RABBITMQ_USER}:{self.RABBITMQ_PASSWORD}@{self.RABBITMQ_HOST}:{self.RABBITMQ_PORT}/"
-
-    @property
-    def LLM_URL(self):
-        return f"http://{self.POD_NAME}.{self.SERVICE_NAME}:{self.TARGET_PORT}"

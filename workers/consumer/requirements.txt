@@ -1,3 +1,4 @@
 httpx
 aio_pika
 pydantic_settings
+pydantic
