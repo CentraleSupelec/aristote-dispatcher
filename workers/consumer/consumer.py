@@ -73,12 +73,16 @@ class RPCClient:
         logging.info("RPC Connection closed")
 
     async def on_response(self, message: AbstractIncomingMessage) -> None:
-        if message.correlation_id and message.correlation_id in self.futures:
-            future = self.futures.pop(message.correlation_id)
-            future.set_result(message)
+        logging.info(f"Received message with correlation_id: {message.correlation_id}")
+        if message.correlation_id:
+            future = self.futures.pop(message.correlation_id, None)
+            if future:
+                future.set_result(message)
+                logging.info(f"Future for correlation_id {message.correlation_id} has been set")
+            else:
+                logging.error(f"No future found for correlation_id {message.correlation_id}")
         else:
-            print(f"Bad message {message!r}")
-            return
+            logging.error(f"Received message without correlation_id: {message!r}")
 
     async def call(self, routing_key: str, correlation_id: str) -> AbstractIncomingMessage:
         loop = asyncio.get_running_loop()
