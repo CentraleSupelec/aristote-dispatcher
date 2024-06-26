@@ -1,11 +1,10 @@
 import asyncio
 import logging
-import re
 import signal
 
 from aio_pika import connect, ExchangeType
 from aio_pika.abc import AbstractIncomingMessage
-from httpx import AsyncClient
+from llm import llm
 from math import inf
 from probes import prober
 from rpc import rpc_client, RPCClient
@@ -27,15 +26,12 @@ WAIT_TIME = 0.5
 
 # === Initialize global variables ==
 
-current_avg_token = inf
-current_nb_users = 0
-
 shutdown_signal = asyncio.Event()
 
 
 # === Utility functions ===
 
-async def try_connection(retry: int = DEFAULT_RETRY):
+async def try_connect_to_rabbitmq(retry: int = DEFAULT_RETRY):
     connection = None
     for attempt in range(retry):
         try:
@@ -48,49 +44,16 @@ async def try_connection(retry: int = DEFAULT_RETRY):
     logging.error(f"Failed to connect consumer to RabbitMQ after {retry} attempts")
     raise Exception(f"Failed to connect consumer to RabbitMQ after {retry} attempts")
 
-async def update_metrics():
-    global current_avg_token, current_nb_users
-
-    async with AsyncClient(base_url=LLM_URL) as http_client:
-        try:
-            response = await http_client.get("/metrics/")
-            response.raise_for_status()
-        except Exception as e:
-            logging.error(f"Failed to update model metrics: {e}")
-            raise
-    
-    content = response.text
-
-    line_pattern = r"^vllm:avg_generation_throughput_toks_per_s.*$"
-    num_requests_running = r"^vllm:num_requests_running.*$"
-
-    tokens_per_second = float(re.search(line_pattern, content, re.MULTILINE).group(0).split(" ")[1])
-    current_nb_users = float(re.search(num_requests_running, content, re.MULTILINE).group(0).split(" ")[1])
-    current_avg_token = tokens_per_second/current_nb_users if current_nb_users else inf
-
-    logging.debug(f" > [Metrics] Tokens per second: {tokens_per_second}")
-    logging.debug(f" > [Metrics] Running requests: {current_nb_users}")
-    logging.debug(f" > [Metrics] Average token per user: {current_avg_token}")
-
-async def try_update_metrics(retry: int = DEFAULT_RETRY):
-    for attempt in range(retry):
-        try:
-            await update_metrics()
-            return
-        except Exception:
-            logging.debug(f"Attempt {attempt+1}/{retry} to update model metrics failed")
-            await asyncio.sleep(attempt)
-    logging.error(f"Failed to update model metrics atfer {retry} attempts")
-    raise Exception(f"Failed to update model metrics atfer {retry} attempts")
-
-async def on_message(message: AbstractIncomingMessage, rpc_client: RPCClient):
+async def on_message_callback(message: AbstractIncomingMessage, rpc_client: RPCClient):
     global current_avg_token
 
     logging.info(f"Message consumed on queue {MODEL}")
+
+    current_avg_token, current_nb_users = await llm.get_metrics()
     
     while current_avg_token < AVG_TOKEN_THRESHOLD and current_nb_users > NB_USER_THRESHOLD:
         await asyncio.sleep(WAIT_TIME)
-        await try_update_metrics()
+        current_avg_token, current_nb_users = await llm.get_metrics()
 
     rpc_response = await rpc_client.call(
         routing_key=message.reply_to, 
@@ -98,8 +61,6 @@ async def on_message(message: AbstractIncomingMessage, rpc_client: RPCClient):
     )
     
     logging.info("RPC response received")
-    await try_update_metrics()
-    logging.info("Metrics updated")
     await message.ack()
     logging.info("Message ACK")
 
@@ -108,7 +69,7 @@ async def on_message(message: AbstractIncomingMessage, rpc_client: RPCClient):
 
 async def main():
     logging.debug("Connecting consumer to RabbitMQ...")
-    connection = await try_connection()
+    connection = await try_connect_to_rabbitmq()
     logging.info("Consumer connected to RabbitMQ")
     channel = await connection.channel()
     await channel.set_qos(prefetch_count=1)
@@ -128,15 +89,15 @@ async def main():
     logging.info("Client connected to RPC")
 
     await model_queue.consume(
-        callback = lambda message: on_message(message, rpc_client),
+        callback = lambda message: on_message_callback(message, rpc_client),
         no_ack=False
     )
-    logging.info(f" [x] Consumption of queue {MODEL}")
+    logging.info(f"Consumption of queue {MODEL}")
 
     await prober.set_started()
     
     # Consumer is running until shutdown signal is received
-    # Until then, all action occurs in the on_message callback
+    # Until then, all action occurs in the on_message_callback
     await shutdown_signal.wait()
 
     logging.debug("Closing RPC connection...")
@@ -144,19 +105,19 @@ async def main():
     logging.debug("RPC disconnect")
     logging.debug("Closing consumer connection...")
     await connection.close()
-    logging.info(" [x] Consumer connection closed")
+    logging.info("Consumer connection closed")
 
 
 # === Entry point ===
 
 if __name__=="__main__":
-    logging.info(" [x] Starting consumer")
+    logging.info("Starting consumer")
 
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
 
     def shutdown():
-        logging.info(" [x] Shutting down consumer...")
+        logging.info("Shutting down consumer...")
         shutdown_signal.set()
         
     for sig in (signal.SIGINT, signal.SIGTERM):
