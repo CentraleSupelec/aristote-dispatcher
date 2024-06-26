@@ -7,8 +7,8 @@ from aio_pika import connect, ExchangeType
 from aio_pika.abc import AbstractIncomingMessage
 from httpx import AsyncClient
 from math import inf
-from modules.rpc import RPCClient
-from modules.settings import settings
+from rpc import RPCClient
+from settings import settings
 
 
 # === Set constants ===
@@ -148,6 +148,8 @@ if __name__=="__main__":
     def shutdown():
         logging.info(" [x] Shutting down consumer...")
         shutdown_signal.set()
+
+    asyncio.set_event_loop(asyncio.new_event_loop())
 
     loop = asyncio.get_event_loop()
     for sig in (signal.SIGINT, signal.SIGTERM):
