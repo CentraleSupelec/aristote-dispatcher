@@ -12,6 +12,8 @@ from typing import MutableMapping
 LLM_URL = settings.LLM_URL
 MODEL = settings.MODEL
 
+RABBITMQ_URL = settings.RABBITMQ_URL
+
 
 class RPCClient:
     def __init__(self, url: str) -> None:
@@ -33,10 +35,14 @@ class RPCClient:
             raise
 
     async def close(self) -> None:
-        if self.consumer_tag:
+        if self.callback_queue and self.consumer_tag:
             await self.callback_queue.cancel(self.consumer_tag)
+            self.callback_queue = None
+            self.consumer_tag = None
         if self.connection:
             await self.connection.close()
+            self.connection = None
+            self.channel = None
 
     async def on_response(self, message: AbstractIncomingMessage) -> None:
         logging.debug(f"Message received with correlation ID: {message.correlation_id}")
@@ -69,5 +75,13 @@ class RPCClient:
         except Exception as e:
             logging.error(f"An error occured while publishing message: {e}")
             raise
-
         return await future
+
+    async def check_connection(self) -> bool:
+        if self.connection and self.channel:
+            if not self.connection.is_closed and not self.channel.is_closed:
+                return True
+        return False
+
+
+rpc_client = RPCClient(url=RABBITMQ_URL)

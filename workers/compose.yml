@@ -2,8 +2,8 @@ services:
   rabbitmq:
     image: rabbitmq:3.13-management
     ports:
-      - 5672:5672  # Port pour la communication AMQP
-      - 15672:15672  # Port pour l'interface web de RabbitMQ
+      - 5672:5672 # Port pour la communication AMQP
+      - 15672:15672 # Port pour l'interface web de RabbitMQ
 
   postgres:
     image: postgres
@@ -15,7 +15,7 @@ services:
       POSTGRES_DB: test
     ports:
       - 5432:5432
-  
+
   # mysql:
   #   image: mysql
   #   volumes:
@@ -48,6 +48,8 @@ services:
   consumer:
     build:
       context: ./consumer
+    ports:
+      - 8081:8081
     environment:
       LOG_LEVEL: 20
       MODEL: casperhansen/mixtral-instruct-awq

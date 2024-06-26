@@ -7,7 +7,8 @@ from aio_pika import connect, ExchangeType
 from aio_pika.abc import AbstractIncomingMessage
 from httpx import AsyncClient
 from math import inf
-from rpc import RPCClient
+from probes import prober
+from rpc import rpc_client, RPCClient
 from settings import settings
 
 
@@ -52,7 +53,7 @@ async def update_metrics():
             response = await http_client.get("/metrics/")
             response.raise_for_status()
         except Exception as e:
-            logging.error("Failed to update model metrics: {e}")
+            logging.error(f"Failed to update model metrics: {e}")
             raise
     
     content = response.text
@@ -119,7 +120,6 @@ async def main():
     await model_queue.bind(exchange=rpc_exchange, routing_key=MODEL)
     logging.info("Queue binded to RPC channel")
     
-    rpc_client = RPCClient(url=RABBITMQ_URL)
     logging.debug("Connecting to RPC...")
     await rpc_client.connect()
     logging.info("Client connected to RPC")
@@ -129,6 +129,8 @@ async def main():
         no_ack=False
     )
     logging.info(f" [x] Consumption of queue {MODEL}")
+
+    await prober.set_started()
     
     await shutdown_signal.wait()
 
@@ -145,9 +147,7 @@ async def main():
 if __name__=="__main__":
     logging.info(" [x] Starting consumer")
 
-
     loop = asyncio.new_event_loop()
-
     asyncio.set_event_loop(loop)
 
     def shutdown():
@@ -157,7 +157,10 @@ if __name__=="__main__":
     for sig in (signal.SIGINT, signal.SIGTERM):
         loop.add_signal_handler(sig, shutdown)
 
+    loop.run_until_complete(prober.setup())
+
     try:
         loop.run_until_complete(main())
     finally:
+        loop.run_until_complete(prober.cleanup())
         loop.close()
