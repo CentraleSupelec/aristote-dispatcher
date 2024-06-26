@@ -40,9 +40,9 @@ async def try_connection(retry: int = DEFAULT_RETRY):
             await asyncio.sleep(attempt)
             return await connect(url=RABBITMQ_URL)
         except Exception as e:
-            logging.debug(f"Tentative {attempt+1}/{retry} de connecter le consumer à RabbitMQ échoué : {e}")
-    logging.error(f"Impossible de connecter le consumer à RabbitMQ après {retry} tentatives")
-    raise Exception(f"Impossible de connecter le consumer à RabbitMQ après {retry} tentatives")
+            logging.debug(f"Attempt {attempt+1}/{retry} to connect consumer to RabbitMQ failed : {e}")
+    logging.error(f"Failed to connect consumer to RabbitMQ after {retry} attempts")
+    raise Exception(f"Failed to connect consumer to RabbitMQ after {retry} attempts")
 
 async def update_metrics():
     global current_avg_token, current_nb_users
@@ -52,7 +52,7 @@ async def update_metrics():
             response = await http_client.get("/metrics/")
             response.raise_for_status()
         except Exception as e:
-            logging.error("Impossible de récupérer les metrics du modèle : {e}")
+            logging.error("Failed to update model metrics: {e}")
             raise
     
     content = response.text
@@ -64,9 +64,9 @@ async def update_metrics():
     current_nb_users = float(re.search(num_requests_running, content, re.MULTILINE).group(0).split(" ")[1])
     current_avg_token = tokens_per_second/current_nb_users if current_nb_users else inf
 
-    logging.debug(f" > [Metrics] Tokens par seconde : {tokens_per_second}")
-    logging.debug(f" > [Metrics] Nombre de requêtes : {current_nb_users}")
-    logging.debug(f" > [Metrics] Tokens moyens par utilisateurs : {current_avg_token}")
+    logging.debug(f" > [Metrics] Tokens per second: {tokens_per_second}")
+    logging.debug(f" > [Metrics] Running requests: {current_nb_users}")
+    logging.debug(f" > [Metrics] Average token per user: {current_avg_token}")
 
 async def try_update_metrics(retry: int = DEFAULT_RETRY):
     for attempt in range(retry):
@@ -74,15 +74,15 @@ async def try_update_metrics(retry: int = DEFAULT_RETRY):
             await update_metrics()
             return
         except Exception:
-            logging.debug(f"Tentative {attempt+1}/{retry} de récupérer les metrics du modèle échoué")
+            logging.debug(f"Attempt {attempt+1}/{retry} to update model metrics failed")
             await asyncio.sleep(attempt)
-    logging.error(f"Impossible de mettre à jour les metrics du modèle après {retry} tentatives")
-    raise Exception(f"Impossible de mettre à jour les metrics du modèle après {retry} tentatives")
+    logging.error(f"Failed to update model metrics atfer {retry} attempts")
+    raise Exception(f"Failed to update model metrics atfer {retry} attempts")
 
 async def on_message(message: AbstractIncomingMessage, rpc_client: RPCClient):
     global current_avg_token
 
-    logging.info(f"Message consommé sur la file {MODEL}")
+    logging.info(f"Message consumed on queue {MODEL}")
     
     while current_avg_token < AVG_TOKEN_THRESHOLD and current_nb_users > NB_USER_THRESHOLD:
         await asyncio.sleep(WAIT_TIME)
@@ -93,9 +93,9 @@ async def on_message(message: AbstractIncomingMessage, rpc_client: RPCClient):
         correlation_id=str(message.correlation_id)
     )
     
-    logging.info("Réponse RPC reçue")
+    logging.info("RPC response received")
     await try_update_metrics()
-    logging.info("Metrics mis à jour")
+    logging.info("Metrics updated")
     await message.ack()
     logging.info("Message ACK")
 
@@ -103,9 +103,9 @@ async def on_message(message: AbstractIncomingMessage, rpc_client: RPCClient):
 # === Main function ===
 
 async def main():
-    logging.debug("Connection du consumer à RabbitMQ...")
+    logging.debug("Connecting consumer to RabbitMQ...")
     connection = await try_connection()
-    logging.info("Consumer connecté à RabbitMQ")
+    logging.info("Consumer connected to RabbitMQ")
     channel = await connection.channel()
     await channel.set_qos(prefetch_count=1)
 
@@ -115,38 +115,38 @@ async def main():
         durable=True
     )
     model_queue = await channel.declare_queue(name=MODEL, durable=True)
-    logging.info(f"File {MODEL} déclarée")
+    logging.info(f"Queue {MODEL} declared on channel")
     await model_queue.bind(exchange=rpc_exchange, routing_key=MODEL)
-    logging.info("File du modèle attachée au canal RPC")
+    logging.info("Queue binded to RPC channel")
     
     rpc_client = RPCClient(url=RABBITMQ_URL)
-    logging.debug("Connection au RPC...")
+    logging.debug("Connecting to RPC...")
     await rpc_client.connect()
-    logging.info("Client connecté au RPC")
+    logging.info("Client connected to RPC")
 
     await model_queue.consume(
         callback = lambda message: on_message(message, rpc_client),
         no_ack=False
     )
-    logging.info(f" [x] Consommation de la file {MODEL}")
+    logging.info(f" [x] Consumption of queue {MODEL}")
     
     await shutdown_signal.wait()
 
-    logging.debug("Fermeture de la connection au RPC...")
+    logging.debug("Closing RPC connection...")
     await rpc_client.close()
-    logging.debug("Client déconnecté du RPC")
-    logging.debug("Fermeture de la connexion du consumer...")
+    logging.debug("RPC disconnect")
+    logging.debug("Closing consumer connection...")
     await connection.close()
-    logging.info(" [x] Connecion du consumer fermée")
+    logging.info(" [x] Consumer connection closed")
 
 
 # === Entry point ===
 
 if __name__=="__main__":
-    logging.info(" [x] Démarrage du consumer")
+    logging.info(" [x] Starting consumer")
 
     def shutdown():
-        logging.info(" [x] Extinction du consumer...")
+        logging.info(" [x] Shutting down consumer...")
         shutdown_signal.set()
 
     loop = asyncio.get_event_loop()

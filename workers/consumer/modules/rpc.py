@@ -29,7 +29,7 @@ class RPCClient:
             self.callback_queue = await self.channel.declare_queue(exclusive=True)
             self.consumer_tag = await self.callback_queue.consume(self.on_response, no_ack=True)
         except Exception as e:
-            logging.error(f"Erreur en se connectant à RabbitMQ: {e}")
+            logging.error(f"Error connecting to RabbitMQ: {e}")
             raise
 
     async def close(self) -> None:
@@ -39,16 +39,16 @@ class RPCClient:
             await self.connection.close()
 
     async def on_response(self, message: AbstractIncomingMessage) -> None:
-        logging.debug(f"Message reçu avec un ID de corrélation : {message.correlation_id}")
+        logging.debug(f"Message received with correlation ID: {message.correlation_id}")
         if message.correlation_id:
             future = self.futures.pop(message.correlation_id, None)
             if future:
                 future.set_result(message)
-                logging.info(f"Le Future avec un ID de corrélation {message.correlation_id} a été définie")
+                logging.info(f"Future with correlation ID {message.correlation_id} set")
             else:
-                logging.error(f"Aucun Future trouvé avec un ID de corrélation {message.correlation_id}")
+                logging.error(f"No Future found with correlation ID {message.correlation_id}")
         else:
-            logging.error(f"Message reçu sans ID de corrélation: {message!r}")
+            logging.error(f"Message received without correlation ID: {message!r}")
 
     async def call(self, routing_key: str, correlation_id: str) -> AbstractIncomingMessage:
         loop = asyncio.get_running_loop()
@@ -65,9 +65,9 @@ class RPCClient:
                 ),
                 routing_key
             )
-            logging.info(f"URL du LLM pour le modèle {MODEL} envoyée à l'API")
+            logging.info(f"LLM URL for model {MODEL} sent to API")
         except Exception as e:
-            logging.error(f"Une erreur est survenue en publiant le message : {e}")
+            logging.error(f"An error occured while publishing message: {e}")
             raise
 
         return await future
