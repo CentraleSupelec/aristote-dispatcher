@@ -51,8 +51,6 @@ services:
   consumer:
     build:
       context: ./consumer
-    ports:
-      - 8081:8081
     environment:
       LOG_LEVEL: 20
       MODEL: casperhansen/mixtral-instruct-awq

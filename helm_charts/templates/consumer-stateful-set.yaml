@@ -101,16 +101,16 @@ spec:
               containerPort: {{ $val.consumer.probePort }}
               protocol: TCP
           livenessProbe:
-            enabled: true
-            path: /health
-            port: {{ $val.consumer.probePort }}
+            httpGet:
+              path: /health
+              port: {{ $val.consumer.probePort }}
             initialDelaySeconds: 2
             periodSeconds: 30
             failureThreshold: 5
           startupProbe:
-            enabled: true
-            path: /startup
-            port: {{ $val.consumer.probePort }}
+            httpGet:
+              path: /startup
+              port: {{ $val.consumer.probePort }}
             initialDelaySeconds: 3
             periodSeconds: 15
             failureThreshold: 10

@@ -36,12 +36,15 @@ shutdown_signal = asyncio.Event()
 # === Utility functions ===
 
 async def try_connection(retry: int = DEFAULT_RETRY):
+    connection = None
     for attempt in range(retry):
         try:
-            await asyncio.sleep(attempt)
-            return await connect(url=RABBITMQ_URL)
+            connection = await connect(url=RABBITMQ_URL)
         except Exception as e:
             logging.debug(f"Attempt {attempt+1}/{retry} to connect consumer to RabbitMQ failed : {e}")
+            await asyncio.sleep(attempt)
+        else:
+            return connection
     logging.error(f"Failed to connect consumer to RabbitMQ after {retry} attempts")
     raise Exception(f"Failed to connect consumer to RabbitMQ after {retry} attempts")
 
@@ -132,6 +135,8 @@ async def main():
 
     await prober.set_started()
     
+    # Consumer is running until shutdown signal is received
+    # Until then, all action occurs in the on_message callback
     await shutdown_signal.wait()
 
     logging.debug("Closing RPC connection...")

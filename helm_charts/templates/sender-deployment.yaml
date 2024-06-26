@@ -43,7 +43,7 @@ spec:
             initialDelaySeconds: 5
             periodSeconds: 5
             failureThreshold: 10
-          readinessProbe:
+          livenessProbe:
             httpGet:
               path: /health
               port: http
