@@ -145,13 +145,15 @@ async def main():
 if __name__=="__main__":
     logging.info(" [x] Starting consumer")
 
+
+    loop = asyncio.new_event_loop()
+
+    asyncio.set_event_loop(loop)
+
     def shutdown():
         logging.info(" [x] Shutting down consumer...")
         shutdown_signal.set()
-
-    asyncio.set_event_loop(asyncio.new_event_loop())
-
-    loop = asyncio.get_event_loop()
+        
     for sig in (signal.SIGINT, signal.SIGTERM):
         loop.add_signal_handler(sig, shutdown)
 

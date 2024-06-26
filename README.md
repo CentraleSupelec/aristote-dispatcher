@@ -1,23 +1,22 @@
 # Helm chart for large scale LLM
 
-Deployement of LLM at a large scale using VLL server for inference
+Deployement of LLM at a large scale using VLL server for inference.
 
 Architecture using 
-- an API block written in python puting the requests received in
-- a rabbitmq queue which 
-- a python script reads and send the message to 
-- a VLLM inference server container.
-- The message are then sent back to the client through rabbitmq
+- API block written in python
+- RabbitMQ priority queue 
+- Python script that reads and send the message 
+- VLLM inference server container
+- Messages are sent back to the client through RabbitMQ
 
 ## Prerequisites in the cluster
 
-- Gpu-operator from Nvidia should be installed in order to access the gpus (https://docs.nvidia.com/datacenter/cloud-native/gpu-operator/latest/getting-started.html)
-- Rabbitmq operator should be installed if using the internal rabbitmq cluster (values for the cluster are ing rabbitmq-cluster.yaml) (https://www.rabbitmq.com/kubernetes/operator/install-operator)
-- ingress-nginx to use the ingress part (https://docs.nginx.com/nginx-ingress-controller/installation/)
-
+- [GPU Operator](https://docs.nvidia.com/datacenter/cloud-native/gpu-operator/latest/getting-started.html) from Nvidia should be installed in order to access the GPUs
+- [RabbitMQ Operator](https://www.rabbitmq.com/kubernetes/operator/install-operator) should be installed if using the internal RabbitMQ cluster (values for the cluster are in rabbitmq-cluster.yaml)
+- [ingress-nginx](https://docs.nginx.com/nginx-ingress-controller/installation/) for the ingress
 
 External chart : 
-- using a mysql/postgresql chart to have a database for the identification tokens
+- MySQL/PostgreSQL chart to have a database for identification tokens
 
 ## Values
 
@@ -37,7 +36,7 @@ List of all the models to deploy in the application. It can be multiple models.
 | `ropeScaling`          | Object representing RoPE scaling configuration to apply for the model | `{enabled: false, jsonConfiguration: "{}", theta: ""}`  |
 
 `jsonConfiguration` and `theta` parameters of the `ropeScaling` configuration correspond to `--rope-scaling` and
-`--rope-theta` arguments of the [vllm engine](https://docs.vllm.ai/en/latest/models/engine_args.html).
+`--rope-theta` arguments of the [VLLM engine](https://docs.vllm.ai/en/latest/models/engine_args.html).
 
 ### Tokens
 
@@ -77,7 +76,7 @@ The sender is the python block which reproduces the API and sends the message do
 
 ### Consumer
 
-The consumer is the python block which pulls messages from the rabbitmq queue and sends them to the inference server.
+The consumer is the Python block which pulls messages from the RabbitMQ queue and sends them to the inference server.
 
 | Name                          | Description                                                                                                   | Value                                          |
 |-------------------------------|---------------------------------------------------------------------------------------------------------------|------------------------------------------------|
@@ -111,9 +110,9 @@ The inference server is using the GPU for ingereing on the LLM. We are using the
 | `inferenceserver.env`              | Env vars to ad to the container                                 | `[]`               |
 
 
-### Rabbitmq
+### RabbitMQ
 
-Rabbitmq is used for the queue system in the architecture. We are using the rabbitmq cluster operator to create the cluster. The file is ```rabbitmq.yaml```. It is also compatible with an external rabbitmq cluster.
+RabbitMQ is used for the queue system in the architecture. We are using the rabbitmq cluster operator to create the cluster. The file is ```rabbitmq.yaml```. It is also compatible with an external rabbitmq cluster.
 
 | Name                     | Description                                                  | Value  |
 |--------------------------|--------------------------------------------------------------|--------|
