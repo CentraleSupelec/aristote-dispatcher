@@ -5,25 +5,21 @@ import uuid
 from aio_pika import connect, ExchangeType, Message, DeliveryMode
 from aio_pika.abc import AbstractChannel, AbstractConnection, AbstractQueue, AbstractIncomingMessage
 from typing import MutableMapping
+from settings import Settings
 
-
-RABBITMQ_USER = os.getenv("RABBITMQ_USER", "guest")
-RABBITMQ_PASSWORD = os.getenv("RABBITMQ_PASSWORD", "guest")
-RABBITMQ_HOST = os.getenv("RABBITMQ_HOST", "localhost")
-RABBITMQ_PORT = os.getenv("RABBITMQ_PORT", 5672)
-RABBITMQ_MANAGEMENT_PORT = os.getenv("RABBITMQ_MANAGEMENT_PORT", 15672)
-RABBITMQ_URL = f"amqp://{RABBITMQ_USER}:{RABBITMQ_PASSWORD}@{RABBITMQ_HOST}:{RABBITMQ_PORT}/"
 
 class RPCClient:
     connection: AbstractConnection
     channel: AbstractChannel
     callback_queue: AbstractQueue
+    settings: Settings
 
-    def __init__(self) -> None:
+    def __init__(self, settings: Settings) -> None:
         self.futures: MutableMapping[str, asyncio.Future] = {}
+        self.settings = settings
 
     async def connect(self) -> None:
-        self.connection = await connect(url=RABBITMQ_URL)
+        self.connection = await connect(url=self.settings.RABBITMQ_URL)
         self.channel = await self.connection.channel()
         self.callback_queue = await self.channel.declare_queue(exclusive=True)
         self.exchange = await self.channel.declare_exchange(

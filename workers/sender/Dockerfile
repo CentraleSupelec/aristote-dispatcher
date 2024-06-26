@@ -9,4 +9,4 @@ COPY . .
 
 EXPOSE 8080
 
-CMD ["fastapi", "run", "--port", "8080", "sender.py"]
+CMD ["fastapi", "run", "--port", "8080", "main.py"]

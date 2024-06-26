@@ -2,17 +2,16 @@ import os
 import aiomysql
 import asyncpg
 import logging
+from settings import Settings
 from abc import ABC, abstractmethod
 
-DATABASE_TYPE = os.getenv("DATABASE_TYPE", "mysql")
-
-DB_HOST = os.getenv("DB_HOST")
-DB_PORT = int(os.getenv("DB_PORT", 3306 if DATABASE_TYPE == "mysql" else 5432))
-DB_USER = os.getenv("DB_USER")
-DB_PASSWORD = os.getenv("DB_PASSWORD")
-DB_NAME = os.getenv("DB_DATABASE")
 
 class Database(ABC):
+
+    settings: Settings
+
+    def __init__(self, settings: Settings) -> None:
+        self.settings = settings
 
     @abstractmethod
     async def create_connection_pool(self):
@@ -26,14 +25,15 @@ class Database(ABC):
         return NotImplemented
     
     @staticmethod
-    async def init_database():
-        if DATABASE_TYPE == "mysql":
-            database = MySQLDatabase()
-        elif DATABASE_TYPE == "postgresql":
-            database = PostgreSQLDatabase()
-        else:
-            raise ValueError("Invalid database type")
-        
+    async def init_database(settings: Settings):
+        match settings.DB_TYPE:
+            case "mysql":
+                database = MySQLDatabase(settings)
+            case "postgresql":
+                database = PostgreSQLDatabase(settings)
+            case _:
+                raise ValueError("Invalid database type")
+            
         await database.create_connection_pool()
 
         return database
@@ -42,13 +42,16 @@ class Database(ABC):
 class MySQLDatabase(Database):
     pool: aiomysql.Pool | None = None
 
+    def __init__(self, settings: Settings) -> None:
+        super().__init__(settings)
+
     async def create_connection_pool(self):
         self.pool = await aiomysql.create_pool(
-            host=DB_HOST,
-            port=DB_PORT,
-            user=DB_USER,
-            password=DB_PASSWORD,
-            db=DB_NAME
+            host=self.settings.DB_HOST,
+            port=self.settings.DB_PORT,
+            user=self.settings.DB_USER,
+            password=self.settings.DB_PASSWORD,
+            db=self.settings.DB_DATABASE
         )
     
     async def execute(self, mysql_query: str, postgres_query: str, *args):
@@ -76,13 +79,17 @@ class MySQLDatabase(Database):
 class PostgreSQLDatabase(Database):
     pool: asyncpg.Pool | None = None
 
+    def __init__(self, settings: Settings) -> None:
+        super().__init__(settings)
+
     async def create_connection_pool(self):
+        logging.info(self.settings)
         self.pool = await asyncpg.create_pool(
-            host=DB_HOST,
-            port=DB_PORT,
-            user=DB_USER,
-            password=DB_PASSWORD,
-            database=DB_NAME
+            host=self.settings.DB_HOST,
+            port=self.settings.DB_PORT,
+            user=self.settings.DB_USER,
+            password=self.settings.DB_PASSWORD,
+            database=self.settings.DB_DATABASE
         )
     
     async def execute(self, mysql_query: str, postgres_query: str, *args):

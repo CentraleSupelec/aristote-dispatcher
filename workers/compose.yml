@@ -39,11 +39,14 @@ services:
       RABBITMQ_PASSWORD: guest
       RABBITMQ_HOST: rabbitmq
       RABBITMQ_PORT: 5672
-      DATABASE_TYPE: postgresql
+      DB_TYPE: postgresql
       DB_HOST: postgres
       DB_USER: user
       DB_PASSWORD: password
       DB_DATABASE: test
+    restart: on-failure
+    depends_on:
+      - rabbitmq
 
   consumer:
     build:
@@ -58,3 +61,6 @@ services:
       RABBITMQ_HOST: rabbitmq
       RABBITMQ_PORT: 5672
       LLM_URL: http://host.docker.internal:50000
+    restart: on-failure
+    depends_on:
+      - rabbitmq
