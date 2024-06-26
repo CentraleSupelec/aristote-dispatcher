@@ -2,12 +2,12 @@ from pydantic_settings import BaseSettings
 from pydantic import Field
 import logging
 
+
 class Settings(BaseSettings):
     LOG_LEVEL: int = Field(default=logging.INFO, env='LOG_LEVEL')
     MODEL: str = Field(default=None, env='MODEL')
     AVG_TOKEN_THRESHOLD: int = Field(default=7, env='AVG_TOKEN_THRESHOLD')
     NB_USER_THRESHOLD: int = Field(default=10, env='NB_USER_THRESHOLD')
-    X_MAX_PRIORITY: int = Field(default=5, env='X_MAX_PRIORITY')
     RABBITMQ_USER: str = Field(default="guest", env='RABBITMQ_USER')
     RABBITMQ_PASSWORD: str = Field(default="guest", env='RABBITMQ_PASSWORD')
     RABBITMQ_HOST: str = Field(default="localhost", env='RABBITMQ_HOST')
@@ -20,3 +20,8 @@ class Settings(BaseSettings):
     @property
     def RABBITMQ_URL(self):
         return f"amqp://{self.RABBITMQ_USER}:{self.RABBITMQ_PASSWORD}@{self.RABBITMQ_HOST}:{self.RABBITMQ_PORT}/"
+    
+
+settings = Settings()
+
+logging.basicConfig(level=settings.LOG_LEVEL, format="%(asctime)s:%(levelname)s:%(name)s: %(message)s")

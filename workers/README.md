@@ -79,8 +79,6 @@ In this section, we detail all the environment variables you can set to configur
 
 - NB_USER_THRESHOLD (int, default=10): When the LLM goes from no user to many users, the average token throughput metric delivered by the LLM is smoothed and unaccurate. To allow a quick start, we don't check the token throughput for the first users.
 
-- X_MAX_PRIORITY (int, default=5): The max priority level of the queue, between 0 and 255. It is recommended to keep it low because a high number will consume more RAM and CPU. If a message is set to a higher priority, it will be considered as max priority.
-
 - RABBITMQ_USER (str, default="guest")
 
 - RABBITMQ_PASSOWRD (str, default="guest")
