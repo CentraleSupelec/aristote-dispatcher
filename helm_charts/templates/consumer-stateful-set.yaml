@@ -129,6 +129,8 @@ spec:
               value: ""
             - name: USE_PROBES
               value: 1
+            - name: RPC_RECONNECT_ATTEMPTS
+              value: 10
             {{- if $val.rabbitmq.internal }}
             - name: RABBITMQ_HOST
               valueFrom:

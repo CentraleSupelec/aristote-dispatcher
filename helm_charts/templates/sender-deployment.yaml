@@ -64,6 +64,8 @@ spec:
               value: {{ .Values.inferenceserver.port | quote}}
             - name: WORKER_NUM
               value: "{{ .Values.sender.replicaCount }}"
+            - name: RPC_RECONNECT_ATTEMPTS
+              value: 10
             {{- if .Values.rabbitmq.internal }}
             - name: RABBITMQ_HOST
               valueFrom:

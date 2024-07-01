@@ -17,7 +17,7 @@ RABBITMQ_URL = settings.RABBITMQ_URL
 AVG_TOKEN_THRESHOLD = settings.AVG_TOKEN_THRESHOLD
 NB_USER_THRESHOLD = settings.NB_USER_THRESHOLD
 
-DEFAULT_RETRY = 10
+RPC_RECONNECT_ATTEMPTS = settings.RPC_RECONNECT_ATTEMPTS
 WAIT_TIME = 1
 TRY_RECONNECT_DELAY = 3
 
@@ -47,14 +47,14 @@ class RPCServer:
             logging.info("Consumer connected to RabbitMQ")
 
     async def close(self) -> None:
-        if self.queue and self.consumer_tag:
-            await self.queue.cancel(self.consumer_tag)
-            self.queue = None
-            self.consumer_tag = None
-        if self.connection:
-            await self.connection.close()
-            self.connection = None
-            self.channel = None
+        if await self.check_connection():
+            try:
+                await self.connection.close()
+            except Exception as e:
+                logging.error(f"Could not close connection: {e}")
+            else:
+                self.connection = None
+                self.channel = None
 
     async def on_message_callback(self, message: AbstractIncomingMessage):
         logging.info(f"Message consumed on queue {MODEL}")
@@ -97,7 +97,7 @@ class RPCServer:
             raise
 
     async def reconnect_loop(self, *args, **kwargs):
-        for _ in range(DEFAULT_RETRY):
+        for _ in range(RPC_RECONNECT_ATTEMPTS):
             try:
                 await self.reconnect()
             except Exception:

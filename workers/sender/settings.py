@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     RABBITMQ_HOST: str = Field(default="localhost", env='RABBITMQ_HOST')
     RABBITMQ_PORT: int = Field(default=5672, env='RABBITMQ_PORT')
     RABBITMQ_MANAGEMENT_PORT : int = Field(default=15672, env='RABBITMQ_MANAGEMENT_PORT')
+    RPC_RECONNECT_ATTEMPTS: int = Field(default=10, env='RPC_RECONNECT_ATTEMPTS')
 
     DB_TYPE: str = Field(default="mysql", env="DB_TYPE")
     DB_HOST: str = Field(env="DB_HOST")

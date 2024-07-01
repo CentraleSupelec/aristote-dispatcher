@@ -90,7 +90,7 @@ async def proxy(request: Request, call_next):
     
     # Readiness check is useful as sender can be loadbalanced
     if request.method == "GET" and request.url.path == "/health/readiness":
-        state = rpc_client.check_connection()
+        state = await rpc_client.check_connection()
         if state:
             return PlainTextResponse(content="OK", status_code=200)
         else:

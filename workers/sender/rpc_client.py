@@ -7,7 +7,6 @@ from typing import MutableMapping
 from settings import Settings
 
 
-DEFAULT_RETRY = 10
 TRY_RECONNECT_DELAY = 3
 
 
@@ -81,7 +80,7 @@ class RPCClient:
             raise
 
     async def reconnect_loop(self, *args, **kwargs):
-        for _ in range(DEFAULT_RETRY):
+        for _ in range(self.settings.RPC_RECONNECT_ATTEMPTS):
             try:
                 await self.reconnect()
             except Exception:
@@ -91,7 +90,7 @@ class RPCClient:
         else:
             raise Exception("Failed to reconnect RPC client")
         
-    def check_connection(self):
+    async def check_connection(self):
         if self.connection and self.channel:
             if not self.connection.is_closed and not self.channel.is_closed:
                 return True

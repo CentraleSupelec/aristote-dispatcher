@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     RABBITMQ_PASSWORD: str = Field(default="guest", env='RABBITMQ_PASSWORD')
     RABBITMQ_USER: str = Field(default="guest", env='RABBITMQ_USER')
     RABBITMQ_PORT: int = Field(default=5672, env='RABBITMQ_PORT')
+    RPC_RECONNECT_ATTEMPTS: int = Field(default=10, env='RPC_RECONNECT_ATTEMPTS')
     SERVICE_NAME: str = Field(default="", env='SERVICE_NAME')
     TARGET_PORT: int = Field(default=8080, env='TARGET_PORT')
     USE_PROBES: int = Field(default=0, env='USE_PROBES')
