@@ -65,7 +65,7 @@ The sender is the python block which reproduces the API and sends the message do
 | `sender.port`               | Port used by the sender port                                                                                  | `8080`                                       |
 | `sender.resources`          | resources specified for the container                                                                         | `""`                                         |
 | `sender.replicaCount`       | Replica count for the sender                                                                                  | `1`                                          |
-| `sender.logLevel`           | Log level for the container :                                                                                 |                                              |
+| `sender.logLevel`           | Log level for the container :                                                                                 |  `"20"`                                        |
 | `sender.env`                | Env vars to ad to the container                                                                               | `[]`                                         |
 | `sender.podAnnotations`     | Pod annotations for the sender                                                                                | `{}`                                         |
 | `sender.podSecurityContext` | Security context for the pod                                                                                  | `{}`                                         |
@@ -73,6 +73,7 @@ The sender is the python block which reproduces the API and sends the message do
 | `sender.tolerations`        | Tolerations for the container                                                                                 | `[]`                                         |
 | `sender.affinty`            | Node affinity and pod afinity for the pod : used if you want to separate the cpu and the gpu part for example | `{}`                                         |
 | `sender.nodeSelector`       | Node selector for the pod                                                                                     | `{}`                                         |
+| `sender.rpcReconnectAttempts`       | Number of attemps to reconnect to RPC before setting pod to unhealthy                                                                                     | `10`                                         |
 
 ### Consumer
 
@@ -80,19 +81,22 @@ The consumer is the Python block which pulls messages from the RabbitMQ queue an
 
 | Name                          | Description                                                                                                   | Value                                          |
 |-------------------------------|---------------------------------------------------------------------------------------------------------------|------------------------------------------------|
-| `consumer.image.repository`   | Repository for the image                                                                                      | `centralesupelec/aristote-dispatcher-consumer` |
-| `consumer.image.pullPolicy`   | Pull policy for the image                                                                                     | `IfNotPresent`                                 |
-| `consumer.image.tag`          | Tag for the image                                                                                             | `latest`                                       |
-| `consumer.port`               | Port used by the consuer port                                                                                 | `8080`                                         |
-| `consumer.resources`          | resources specified for the container                                                                         | `""`                                           |
-| `consumer.replicaCount`       | Replica count for the consumer                                                                                | `1`                                            |
-| `consumer.env`                | Env vars to ad to the container                                                                               | `[]`                                           |
-| `consumer.podAnnotations`     | Pod annotations for the sender                                                                                | `{}`                                           |
-| `consumer.podSecurityContext` | Security context for the pod                                                                                  | `{}`                                           |
-| `consumer.securityContext`    | Security context for the container                                                                            | `{}`                                           |
-| `consumer.tolerations`        | Tolerations for the container                                                                                 | `[]`                                           |
-| `consumer.affinty`            | Node affinity and pod afinity for the pod : used if you want to separate the cpu and the gpu part for example | `{}`                                           |
-| `consumer.nodeSelector`       | Node selector for the pod                                                                                     | `{}`                                           |
+| `consumer.image.repository`    | Repository for the image                                                                                      | `centralesupelec/aristote-dispatcher-consumer` |
+| `consumer.image.pullPolicy`    | Pull policy for the image                                                                                     | `IfNotPresent`                                 |
+| `consumer.image.tag`           | Tag for the image                                                                                             | `latest`                                       |
+| `consumer.port`                | Port used by the consuer port                                                                                 | `8080`                                         |
+| `consumer.resources`           | resources specified for the container                                                                         | `""`                                           |
+| `consumer.replicaCount`        | Replica count for the consumer                                                                                | `1`                                            |
+| `consumer.env`                 | Env vars to ad to the container                                                                               | `[]`                                           |
+| `consumer.podAnnotations`      | Pod annotations for the sender                                                                                | `{}`                                           |
+| `consumer.podSecurityContext`  | Security context for the pod                                                                                  | `{}`                                           |
+| `consumer.securityContext`     | Security context for the container                                                                            | `{}`                                           |
+| `consumer.tolerations`         | Tolerations for the container                                                                                 | `[]`                                           |
+| `consumer.affinty`             | Node affinity and pod afinity for the pod : used if you want to separate the cpu and the gpu part for example | `{}`                                           |
+| `consumer.nodeSelector`        | Node selector for the pod                                                                                     | `{}`                                           |
+| `consumer.rpcReconnectAttempts`| Number of attemps to reconnect to RPC before setting pod to unhealthy                                                                                     | `10`                                         |
+| `consumer.useProbes`           | The pod uses routes to communicate its status to Kubernetes                                                                                      | `1`                                         |
+
 
 
 ### Inference server

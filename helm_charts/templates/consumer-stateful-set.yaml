@@ -100,6 +100,7 @@ spec:
             - name: http
               containerPort: {{ $val.consumer.probePort }}
               protocol: TCP
+          {{ if $val.consumer.useProbes }}
           livenessProbe:
             httpGet:
               path: /health
@@ -114,6 +115,15 @@ spec:
             initialDelaySeconds: 3
             periodSeconds: 15
             failureThreshold: 10
+          {{ else }}
+          livenessProbe:
+            exec:
+              command:
+              - sh
+            initialDelaySeconds: 2
+            periodSeconds: 15
+            failureThreshold: 5
+          {{ end }}
           resources:
             {{- toYaml $val.consumer.resources | nindent 12 }}
           env:
@@ -128,7 +138,11 @@ spec:
             - name: SUFFIX
               value: ""
             - name: USE_PROBES
+              {{ if $val.consumer.useProbes }}
+              value: {{ $val.consumer.useProbes }}
+              {{ else }}
               value: 1
+              {{ end }}
             - name: RPC_RECONNECT_ATTEMPTS
               {{ if $val.consumer.rpcReconnectAttempts }}
               value: {{ $val.consumer.rpcReconnectAttempts }}
