@@ -96,11 +96,11 @@ spec:
             {{- toYaml $val.consumer.securityContext | nindent 12 }}
           image: "{{ $val.consumer.image.repository }}:{{ $val.consumer.image.tag }}"
           imagePullPolicy: {{ $val.consumer.image.pullPolicy | quote }}
+          {{ if $val.consumer.useProbes }}
           ports:
             - name: http
               containerPort: {{ $val.consumer.probePort }}
               protocol: TCP
-          {{ if $val.consumer.useProbes }}
           livenessProbe:
             httpGet:
               path: /health
