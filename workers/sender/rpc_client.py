@@ -7,6 +7,10 @@ from typing import MutableMapping
 from settings import Settings
 
 
+DEFAULT_RETRY = 10
+TRY_RECONNECT_DELAY = 3
+
+
 class RPCClient:
     connection: AbstractConnection
     channel: AbstractChannel
@@ -22,6 +26,7 @@ class RPCClient:
         self.channel = await self.connection.channel()
         self.callback_queue = await self.channel.declare_queue(exclusive=True)
         self.consumer_tag = await self.callback_queue.consume(self.on_response, no_ack=True)
+        self.connection.close_callbacks.add(self.reconnect_loop)
 
     async def close(self) -> None:
         logging.info("Closing RPC Connection")
@@ -65,3 +70,29 @@ class RPCClient:
         response: AbstractIncomingMessage = await future
         logging.info(f"For model {model}, got LLM URL")
         return response
+    
+    async def reconnect(self):
+        logging.info("Attempting to reconnect RPC client...")
+        try:
+            await self.connect()
+            logging.info("RPC client reconnected successfully")
+        except Exception as e:
+            logging.error(f"Error while reconnecting RPC client: {e}")
+            raise
+
+    async def reconnect_loop(self, *args, **kwargs):
+        for _ in range(DEFAULT_RETRY):
+            try:
+                await self.reconnect()
+            except Exception:
+                await asyncio.sleep(TRY_RECONNECT_DELAY)
+            else:
+                break
+        else:
+            raise Exception("Failed to reconnect RPC client")
+        
+    def check_connection(self):
+        if self.connection and self.channel:
+            if not self.connection.is_closed and not self.channel.is_closed:
+                return True
+        return False

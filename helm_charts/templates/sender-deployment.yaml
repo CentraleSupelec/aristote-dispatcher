@@ -38,18 +38,23 @@ spec:
               protocol: TCP
           startupProbe:
             httpGet:
-              path: /health
+              path: /health/startup
               port: http
             initialDelaySeconds: 5
             periodSeconds: 5
-            failureThreshold: 10
           livenessProbe:
             httpGet:
-              path: /health
+              path: /health/liveness
               port: http
             initialDelaySeconds: 5
             periodSeconds: 5
-            failureThreshold: 10
+            failureThreshold: 5
+          readinessProbe:
+            httpGet:
+              path: /health/readiness
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 5
           env:
             - name: WORKER_URL
               value: {{ include "vllm.fullname" .}}-consumer

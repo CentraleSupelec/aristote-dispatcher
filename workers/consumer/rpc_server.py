@@ -18,7 +18,8 @@ AVG_TOKEN_THRESHOLD = settings.AVG_TOKEN_THRESHOLD
 NB_USER_THRESHOLD = settings.NB_USER_THRESHOLD
 
 DEFAULT_RETRY = 10
-WAIT_TIME = 0.5
+WAIT_TIME = 1
+TRY_RECONNECT_DELAY = 3
 
 
 class RPCServer:
@@ -38,6 +39,7 @@ class RPCServer:
             await self.channel.set_qos(prefetch_count=1)
             self.queue = await self.channel.declare_queue(name=MODEL, durable=True)
             self.consumer_tag = await self.queue.consume(self.on_message_callback, no_ack=False)
+            self.connection.close_callbacks.add(self.reconnect_loop)
         except Exception as e:
             logging.error(f"Error connecting to RabbitMQ: {e}")
             raise
@@ -79,23 +81,31 @@ class RPCServer:
         else:
             await message.ack()
 
-    # WIP
-
-    # async def check_connection(self) -> bool:
-    #     if self.connection and self.channel:
-    #         if not self.connection.is_closed and not self.channel.is_closed:
-    #             return True
-    #     return False
+    async def check_connection(self) -> bool:
+        if self.connection and self.channel:
+            if not self.connection.is_closed and not self.channel.is_closed:
+                return True
+        return False
     
-    # async def reconnect(self):
-    #     logging.info("Attempting to reconnect RPC client...")
-    #     try:
-    #         await self.close()
-    #         await self.connect()
-    #         logging.info("RPC client reconnected successfully")
-    #     except Exception as e:
-    #         logging.error(f"Error while reconnecting RPC client: {e}")
-    #         raise
+    async def reconnect(self):
+        logging.info("Attempting to reconnect RPC client...")
+        try:
+            await self.connect()
+            logging.info("RPC client reconnected successfully")
+        except Exception as e:
+            logging.error(f"Error while reconnecting RPC client: {e}")
+            raise
+
+    async def reconnect_loop(self, *args, **kwargs):
+        for _ in range(DEFAULT_RETRY):
+            try:
+                await self.reconnect()
+            except Exception:
+                await asyncio.sleep(TRY_RECONNECT_DELAY)
+            else:
+                break
+        else:
+            raise Exception("Failed to reconnect RPC client")
 
 
 rpc_server = RPCServer(url=RABBITMQ_URL)

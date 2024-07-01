@@ -82,8 +82,19 @@ async def proxy(request: Request, call_next):
     start_hour = f"{start.tm_hour}:{start.tm_min}:{start.tm_sec}"
     logging.info(f"Received request on path {request.url.path}")
 
-    if request.method == "GET" and request.url.path == "/health":
+    if request.method == "GET" and request.url.path == "/health/startup":
         return PlainTextResponse(content="OK", status_code=200)
+    
+    if request.method == "GET" and request.url.path == "/health/liveness":
+        return PlainTextResponse(content="OK", status_code=200)
+    
+    # Readiness check is useful as sender can be loadbalanced
+    if request.method == "GET" and request.url.path == "/health/readiness":
+        state = rpc_client.check_connection()
+        if state:
+            return PlainTextResponse(content="OK", status_code=200)
+        else:
+            return PlainTextResponse(content="KO", status_code=503)
 
     # Authorization
     try:
