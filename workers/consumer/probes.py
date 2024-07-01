@@ -1,5 +1,4 @@
 from aiohttp import web
-from rpc import rpc_client
 
 
 PROBES_PORT = 8081
@@ -7,7 +6,6 @@ PROBES_PORT = 8081
 
 class Prober:
     def __init__(self):
-        self.health = True
         self.startup = False
         self.app = web.Application()
         self.app.router.add_get("/health", self.handle_health_check)
@@ -25,11 +23,9 @@ class Prober:
         await self.runner.cleanup()
 
     async def handle_health_check(self, request):
-        self.health &= await rpc_client.check_connection()
-        if self.health:
-            return web.Response(text="OK", status=200)
-        else:
-            return web.Response(text="Unhealthy", status=500)
+        # Consumer is self-healing, it is unhealthy only if it has crashed
+        # It will then stop answering to health checks
+        return web.Response(text="OK", status=200)
         
     async def set_started(self):
         self.startup = True

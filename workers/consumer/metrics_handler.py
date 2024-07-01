@@ -12,7 +12,7 @@ LLM_URL = settings.LLM_URL
 DEFAULT_RETRY = 10
 
 
-class LLM:
+class MetricsHandler:
     def __init__(self):
         self.current_avg_token = inf
         self.current_nb_users = 0
@@ -55,4 +55,4 @@ class LLM:
         raise Exception(f"Failed to update model metrics atfer {retry} attempts")
 
 
-llm = LLM()
+metrics_handler = MetricsHandler()

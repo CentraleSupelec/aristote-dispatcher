@@ -2,26 +2,14 @@ import asyncio
 import logging
 import signal
 
-from aio_pika import connect, ExchangeType
-from aio_pika.abc import AbstractIncomingMessage
-from llm import llm
-from math import inf
 from probes import prober
-from rpc import rpc_client, RPCClient
+from rpc_server import rpc_server
 from settings import settings
 
 
 # === Set constants ===
 
-MODEL = settings.MODEL
-AVG_TOKEN_THRESHOLD = settings.AVG_TOKEN_THRESHOLD
-NB_USER_THRESHOLD = settings.NB_USER_THRESHOLD
-
-RABBITMQ_URL = settings.RABBITMQ_URL
-LLM_URL = settings.LLM_URL
-
-DEFAULT_RETRY = 10
-WAIT_TIME = 0.5
+CHECK_DELAY = 5
 
 
 # === Initialize global variables ==
@@ -29,83 +17,32 @@ WAIT_TIME = 0.5
 shutdown_signal = asyncio.Event()
 
 
-# === Utility functions ===
-
-async def try_connect_to_rabbitmq(retry: int = DEFAULT_RETRY):
-    connection = None
-    for attempt in range(retry):
-        try:
-            connection = await connect(url=RABBITMQ_URL)
-        except Exception as e:
-            logging.debug(f"Attempt {attempt+1}/{retry} to connect consumer to RabbitMQ failed : {e}")
-            await asyncio.sleep(attempt)
-        else:
-            return connection
-    logging.error(f"Failed to connect consumer to RabbitMQ after {retry} attempts")
-    raise Exception(f"Failed to connect consumer to RabbitMQ after {retry} attempts")
-
-async def on_message_callback(message: AbstractIncomingMessage, rpc_client: RPCClient):
-    global current_avg_token
-
-    logging.info(f"Message consumed on queue {MODEL}")
-
-    current_avg_token, current_nb_users = await llm.get_metrics()
-    
-    while current_avg_token < AVG_TOKEN_THRESHOLD and current_nb_users > NB_USER_THRESHOLD:
-        await asyncio.sleep(WAIT_TIME)
-        current_avg_token, current_nb_users = await llm.get_metrics()
-
-    rpc_response = await rpc_client.call(
-        routing_key=message.reply_to, 
-        correlation_id=str(message.correlation_id)
-    )
-    
-    logging.info("RPC response received")
-    await message.ack()
-    logging.info("Message ACK")
-
-
 # === Main function ===
 
-async def main():
-    logging.debug("Connecting consumer to RabbitMQ...")
-    connection = await try_connect_to_rabbitmq()
-    logging.info("Consumer connected to RabbitMQ")
-    channel = await connection.channel()
-    await channel.set_qos(prefetch_count=1)
+async def main():   
+    await rpc_server.connect()
 
-    rpc_exchange = await channel.declare_exchange(
-        name="rpc",
-        type=ExchangeType.TOPIC,
-        durable=True
-    )
-    model_queue = await channel.declare_queue(name=MODEL, durable=True)
-    logging.info(f"Queue {MODEL} declared on channel")
-    await model_queue.bind(exchange=rpc_exchange, routing_key=MODEL)
-    logging.info("Queue binded to RPC channel")
-    
-    logging.debug("Connecting to RPC...")
-    await rpc_client.connect()
-    logging.info("Client connected to RPC")
+    if settings.USE_PROBES: await prober.set_started()
 
-    await model_queue.consume(
-        callback = lambda message: on_message_callback(message, rpc_client),
-        no_ack=False
-    )
-    logging.info(f"Consumption of queue {MODEL}")
+    # WIP
+    # async def check_rpc_connection():
+    #     while not shutdown_signal.is_set():
+    #         if not await rpc_server.check_connection():
+    #             try:
+    #                 await rpc_server.reconnect()
+    #             except Exception as e:
+    #                 logging.error(f"Failed to reconnect RPC client: {e}")
+    #         await asyncio.sleep(CHECK_DELAY)
 
-    await prober.set_started()
+    # asyncio.create_task(check_rpc_connection())
     
     # Consumer is running until shutdown signal is received
     # Until then, all action occurs in the on_message_callback
     await shutdown_signal.wait()
 
     logging.debug("Closing RPC connection...")
-    await rpc_client.close()
-    logging.debug("RPC disconnect")
-    logging.debug("Closing consumer connection...")
-    await connection.close()
-    logging.info("Consumer connection closed")
+    await rpc_server.close()
+    logging.info("RPC disconnected")
 
 
 # === Entry point ===
@@ -123,10 +60,10 @@ if __name__=="__main__":
     for sig in (signal.SIGINT, signal.SIGTERM):
         loop.add_signal_handler(sig, shutdown)
 
-    loop.run_until_complete(prober.setup())
+    if settings.USE_PROBES: loop.run_until_complete(prober.setup())
 
     try:
         loop.run_until_complete(main())
     finally:
-        loop.run_until_complete(prober.cleanup())
+        if settings.USE_PROBES: loop.run_until_complete(prober.cleanup())
         loop.close()

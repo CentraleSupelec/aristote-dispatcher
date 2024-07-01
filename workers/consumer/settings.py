@@ -4,17 +4,19 @@ import logging
 
 
 class Settings(BaseSettings):
+    AVG_TOKEN_THRESHOLD: int = Field(default=7, env='AVG_TOKEN_THRESHOLD')
     LOG_LEVEL: int = Field(default=logging.INFO, env='LOG_LEVEL')
     MODEL: str = Field(default=None, env='MODEL')
-    AVG_TOKEN_THRESHOLD: int = Field(default=7, env='AVG_TOKEN_THRESHOLD')
     NB_USER_THRESHOLD: int = Field(default=10, env='NB_USER_THRESHOLD')
-    RABBITMQ_USER: str = Field(default="guest", env='RABBITMQ_USER')
-    RABBITMQ_PASSWORD: str = Field(default="guest", env='RABBITMQ_PASSWORD')
-    RABBITMQ_HOST: str = Field(default="localhost", env='RABBITMQ_HOST')
-    RABBITMQ_PORT: int = Field(default=5672, env='RABBITMQ_PORT')
     POD_NAME: str = Field(default="localhost", env='POD_NAME')
+    RABBITMQ_HOST: str = Field(default="localhost", env='RABBITMQ_HOST')
+    RABBITMQ_PASSWORD: str = Field(default="guest", env='RABBITMQ_PASSWORD')
+    RABBITMQ_USER: str = Field(default="guest", env='RABBITMQ_USER')
+    RABBITMQ_PORT: int = Field(default=5672, env='RABBITMQ_PORT')
     SERVICE_NAME: str = Field(default="", env='SERVICE_NAME')
     TARGET_PORT: int = Field(default=8080, env='TARGET_PORT')
+    USE_PROBES: int = Field(default=0, env='USE_PROBES')
+    
     LLM_URL: str = Field(default=f"http://{POD_NAME}.{SERVICE_NAME}:{TARGET_PORT}", env='LLM_URL')
 
     @property

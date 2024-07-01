@@ -127,6 +127,8 @@ spec:
               value: {{ $val.inferenceserver.port | quote }}
             - name: SUFFIX
               value: ""
+            - name: USE_PROBES
+              value: 1
             {{- if $val.rabbitmq.internal }}
             - name: RABBITMQ_HOST
               valueFrom:

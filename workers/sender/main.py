@@ -91,8 +91,8 @@ async def proxy(request: Request, call_next):
     except Exception as e:
         return JSONResponse(content={"error": str(e)}, status_code=401)
     user_id, token, priority, threshold = user
-    if threshold is None:
-        threshold = 0
+    threshold = 0 if threshold is None else threshold
+
     logging.info("User fetched")
 
     # Handle GET request normally
@@ -131,6 +131,7 @@ async def proxy(request: Request, call_next):
 
     if type(rpc_response) == int:
         response_content = {"error": "Too many people using the service"}
+        # TODO: Don't distinguish users by stream or not, use human / machine instead
         if json_body["stream"]:
             # in case of stream, we set status code to 200 to avoid OpenWebUI to crash
             return PlainTextResponse(content=response_content, status_code=200)
@@ -141,7 +142,7 @@ async def proxy(request: Request, call_next):
     llm_url = rpc_response.body.decode()
     logging.info(f"LLM Url received : {llm_url}")
 
-    http_client = AsyncClient(base_url=llm_url, timeout=600.0)
+    http_client = AsyncClient(base_url=llm_url, timeout=300.0)
     req = http_client.build_request(
         method=request.method, url=request.url.path, content=body
     )
@@ -151,17 +152,8 @@ async def proxy(request: Request, call_next):
     )
     logging.info("async proxy request created")
 
-    async def confirm():
-        await rpc_client.channel.default_exchange.publish(
-            message=Message(
-                body=b"REQUEST LAUNCHED", correlation_id=rpc_response.correlation_id
-            ),
-            routing_key=rpc_response.reply_to,
-        )
-
     try:
         res = await http_client.send(req, stream=True)
-        await confirm()
         logging.info("async proxy request send")
         background_tasks = BackgroundTasks(
             [
@@ -172,10 +164,10 @@ async def proxy(request: Request, call_next):
                 ),
             ]
         )
+    except Exception as e:
+        logging.error(e)
+        return JSONResponse(content={"error": "Internal error"}, status_code=500)
+    else:
         return StreamingResponse(
             res.aiter_raw(), headers=res.headers, background=background_tasks
         )
-    except Exception as e:
-        logging.error(e)
-        await confirm()
-        return JSONResponse(content={"error": "Internal error"}, status_code=500)

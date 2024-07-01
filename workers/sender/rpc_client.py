@@ -1,8 +1,7 @@
-import os
 import logging
 import asyncio
 import uuid
-from aio_pika import connect, ExchangeType, Message, DeliveryMode
+from aio_pika import connect, Message, DeliveryMode
 from aio_pika.abc import AbstractChannel, AbstractConnection, AbstractQueue, AbstractIncomingMessage
 from typing import MutableMapping
 from settings import Settings
@@ -22,11 +21,6 @@ class RPCClient:
         self.connection = await connect(url=self.settings.RABBITMQ_URL)
         self.channel = await self.connection.channel()
         self.callback_queue = await self.channel.declare_queue(exclusive=True)
-        self.exchange = await self.channel.declare_exchange(
-            name="rpc",
-            type=ExchangeType.TOPIC,
-            durable=True
-        )
         self.consumer_tag = await self.callback_queue.consume(self.on_response, no_ack=True)
 
     async def close(self) -> None:
@@ -41,6 +35,7 @@ class RPCClient:
             return
 
         future: asyncio.Future = self.futures.pop(message.correlation_id)
+        logging.info(f"Got response {message.body}")
         future.set_result(message)
 
     async def call(self, priority: int, threshold: int, model: str) -> AbstractIncomingMessage | int:
@@ -50,13 +45,13 @@ class RPCClient:
         if nb_messages > threshold:
             return 1
         
-        logging.info(f" [x] New request for model {model}")
+        logging.info(f"New request for model {model}")
         correlation_id = str(uuid.uuid4())
         loop = asyncio.get_running_loop()
         future = loop.create_future()
         self.futures[correlation_id] = future
 
-        await self.exchange.publish(
+        await self.channel.default_exchange.publish(
             message = Message(
                 body=b"AVAILABLE?",
                 delivery_mode=DeliveryMode.PERSISTENT,
@@ -66,7 +61,7 @@ class RPCClient:
             ),
             routing_key=model,
         )
-        logging.info(f" [x] Message push to model queue {model}")
+        logging.info(f"Message push to model queue {model}")
         response: AbstractIncomingMessage = await future
-        logging.info(f" [.] For model {model}, got LLM URL")
+        logging.info(f"For model {model}, got LLM URL")
         return response
