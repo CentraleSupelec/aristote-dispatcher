@@ -48,7 +48,7 @@ consumer:
     pullPolicy: IfNotPresent
     tag: latest
   port: 8080
-  useProbes: 1
+  useProbes: True
   probePort: 8081
   resources:
     requests:

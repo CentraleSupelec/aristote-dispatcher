@@ -95,8 +95,8 @@ The consumer is the Python block which pulls messages from the RabbitMQ queue an
 | `consumer.affinty`             | Node affinity and pod afinity for the pod : used if you want to separate the cpu and the gpu part for example | `{}`                                           |
 | `consumer.nodeSelector`        | Node selector for the pod                                                                                     | `{}`                                           |
 | `consumer.rpcReconnectAttempts`| Number of attemps to reconnect to RPC before setting pod to unhealthy                                                                                     | `10`                                         |
-| `consumer.useProbes`           | The pod uses routes to communicate its status to Kubernetes                                                                                      | `1`                                         |
-| `consumer.probePort`           | The pod's port used for probes                                                                                      | `8081`                                         |
+| `consumer.useProbes`           | The pod uses routes to communicate its status to Kubernetes                                                                                      | `True`                                         |
+| `consumer.probePort`           | Port used for probes (if `useProbes` is set to `True`)                                                                                     | `8081`                                         |
 
 
 
