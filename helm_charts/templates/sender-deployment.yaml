@@ -65,7 +65,11 @@ spec:
             - name: WORKER_NUM
               value: "{{ .Values.sender.replicaCount }}"
             - name: RPC_RECONNECT_ATTEMPTS
+              {{ if .Values.sender.rpcReconnectAttempts }}
+              value: {{ .Values.sender.rpcReconnectAttempts }}
+              {{ else }}
               value: 10
+              {{ end }}
             {{- if .Values.rabbitmq.internal }}
             - name: RABBITMQ_HOST
               valueFrom:

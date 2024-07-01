@@ -130,7 +130,11 @@ spec:
             - name: USE_PROBES
               value: 1
             - name: RPC_RECONNECT_ATTEMPTS
+              {{ if $val.consumer.rpcReconnectAttempts }}
+              value: {{ $val.consumer.rpcReconnectAttempts }}
+              {{ else }}
               value: 10
+              {{ end }}
             {{- if $val.rabbitmq.internal }}
             - name: RABBITMQ_HOST
               valueFrom:

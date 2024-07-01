@@ -33,6 +33,7 @@ sender:
       memory: "2048Mi"
   replicaCount: 1
   logLevel: "20"
+  rpcReconnectAttempts: 10
   env: []
   podAnnotations: {}
   podSecurityContext: {}
@@ -57,6 +58,7 @@ consumer:
       memory: "1024Mi"
   replicaCount: 1
   logLevel: "20"
+  rpcReconnectAttempts: 10
   env: []
   annotations: {}
   podAnnotations: {}
