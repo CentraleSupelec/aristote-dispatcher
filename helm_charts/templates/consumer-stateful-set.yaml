@@ -139,15 +139,15 @@ spec:
               value: ""
             - name: USE_PROBES
               {{ if $val.consumer.useProbes }}
-              value: 1
+              value: "1"
               {{ else }}
-              value: 0
+              value: "0"
               {{ end }}
             - name: RPC_RECONNECT_ATTEMPTS
               {{ if $val.consumer.rpcReconnectAttempts }}
-              value: {{ $val.consumer.rpcReconnectAttempts }}
+              value: {{ $val.consumer.rpcReconnectAttempts | quote }}
               {{ else }}
-              value: 10
+              value: "10"
               {{ end }}
             {{- if $val.rabbitmq.internal }}
             - name: RABBITMQ_HOST
