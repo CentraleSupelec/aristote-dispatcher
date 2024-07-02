@@ -1,13 +1,14 @@
+{{ $file := . }}
 apiVersion: monitoring.coreos.com/v1
 kind: PodMonitor
 metadata:
-  name: rabbitmq-cluster-operator
+  name: consumer-pod-monitor
 spec:
   podMetricsEndpoints:
-    - port: metrics
+    - port: {{ .Values.inferenceserver.port | quote }}
   selector:
     matchLabels:
-      app.kubernetes.io/component: rabbitmq-operator
+      app.kubernetes.io/component: {{ include "vllm.fullname" $file }}-consumer-{{ .name }}
   namespaceSelector:
     matchNames:
       - {{ .Release.Namespace | quote }}
