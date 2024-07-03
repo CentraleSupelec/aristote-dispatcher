@@ -10,7 +10,7 @@ from settings import settings
 shutdown_signal = asyncio.Event()
 
 
-async def main():   
+async def main_consumer():   
     await rpc_server.connect()
 
     if settings.USE_PROBES: await prober.set_started()
@@ -25,7 +25,7 @@ async def main():
     logging.info("RPC disconnected")
 
 
-if __name__=="__main__":
+if __name__ == "__main__":
     logging.info("Starting consumer")
 
     loop = asyncio.new_event_loop()
@@ -41,7 +41,7 @@ if __name__=="__main__":
     if settings.USE_PROBES: loop.run_until_complete(prober.setup())
 
     try:
-        loop.run_until_complete(main())
+        loop.run_until_complete(main_consumer())
     finally:
         if settings.USE_PROBES: loop.run_until_complete(prober.cleanup())
         loop.close()

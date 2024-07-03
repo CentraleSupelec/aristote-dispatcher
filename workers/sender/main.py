@@ -1,22 +1,18 @@
-import time
+import json
 import logging
 import time
-import json
-from httpx import AsyncClient
-from aio_pika import Message
-from fastapi import FastAPI, Request
-from fastapi.responses import StreamingResponse, JSONResponse, PlainTextResponse
-from starlette.background import BackgroundTask, BackgroundTasks
 from contextlib import asynccontextmanager
 from db import Database
+from fastapi import FastAPI, Request
+from fastapi.responses import StreamingResponse, JSONResponse, PlainTextResponse
+from httpx import AsyncClient
+from models import get_model_by_id, get_models
 from rpc_client import RPCClient
 from settings import Settings
-from models import get_model_by_id, get_models
+from starlette.background import BackgroundTask, BackgroundTasks
+
 
 settings = Settings()
-logging.basicConfig(
-    level=settings.LOG_LEVEL, format="%(asctime)s:%(levelname)s:%(name)s: %(message)s"
-)
 
 database = None
 rpc_client = None

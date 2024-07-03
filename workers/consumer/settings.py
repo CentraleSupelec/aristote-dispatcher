@@ -23,7 +23,7 @@ class Settings(BaseSettings):
     @property
     def RABBITMQ_URL(self):
         return f"amqp://{self.RABBITMQ_USER}:{self.RABBITMQ_PASSWORD}@{self.RABBITMQ_HOST}:{self.RABBITMQ_PORT}/"
-    
+
 
 settings = Settings()
 

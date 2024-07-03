@@ -3,7 +3,7 @@ import logging
 
 from aio_pika import connect, Message, DeliveryMode
 from aio_pika.abc import AbstractConnection, AbstractChannel, AbstractQueue, AbstractIncomingMessage
-from metrics_handler import metrics_handler
+from metrics import try_update_metrics
 from settings import settings
 
 
@@ -18,8 +18,7 @@ AVG_TOKEN_THRESHOLD = settings.AVG_TOKEN_THRESHOLD
 NB_USER_THRESHOLD = settings.NB_USER_THRESHOLD
 
 RPC_RECONNECT_ATTEMPTS = settings.RPC_RECONNECT_ATTEMPTS
-WAIT_TIME = 1
-TRY_RECONNECT_DELAY = 3
+WAIT_FOR_LLM_DELAY = 1
 
 
 class RPCServer:
@@ -28,8 +27,6 @@ class RPCServer:
         self.connection: AbstractConnection = None
         self.channel: AbstractChannel = None
         self.queue: AbstractQueue = None
-        self.consumer_tag = None
-        self.rpc_exchange = None
 
     async def connect(self) -> None:
         logging.debug("Connecting consumer to RabbitMQ...")
@@ -39,7 +36,7 @@ class RPCServer:
             await self.channel.set_qos(prefetch_count=1)
             self.queue = await self.channel.declare_queue(name=MODEL, durable=True)
             self.consumer_tag = await self.queue.consume(self.on_message_callback, no_ack=False)
-            self.connection.close_callbacks.add(self.reconnect_loop)
+            self.connection.close_callbacks.add(self.try_reconnect)
         except Exception as e:
             logging.error(f"Error connecting to RabbitMQ: {e}")
             raise
@@ -59,11 +56,11 @@ class RPCServer:
     async def on_message_callback(self, message: AbstractIncomingMessage):
         logging.info(f"Message consumed on queue {MODEL}")
 
-        current_avg_token, current_nb_users = await metrics_handler.get_metrics()
+        current_avg_token, current_nb_users = await try_update_metrics()
         
         while current_avg_token < AVG_TOKEN_THRESHOLD and current_nb_users > NB_USER_THRESHOLD:
-            await asyncio.sleep(WAIT_TIME)
-            current_avg_token, current_nb_users = await metrics_handler.get_metrics()
+            await asyncio.sleep(WAIT_FOR_LLM_DELAY)
+            current_avg_token, current_nb_users = await try_update_metrics()
 
         try:
             await self.channel.default_exchange.publish(
@@ -96,12 +93,13 @@ class RPCServer:
             logging.error(f"Error while reconnecting RPC client: {e}")
             raise
 
-    async def reconnect_loop(self, *args, **kwargs):
-        for _ in range(RPC_RECONNECT_ATTEMPTS):
+    # Function signature is required by close_callbacks
+    async def try_reconnect(self, *args, **kwargs):
+        for i in range(RPC_RECONNECT_ATTEMPTS):
             try:
                 await self.reconnect()
             except Exception:
-                await asyncio.sleep(TRY_RECONNECT_DELAY)
+                await asyncio.sleep(i)
             else:
                 break
         else:
