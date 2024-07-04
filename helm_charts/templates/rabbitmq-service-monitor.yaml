@@ -1,3 +1,6 @@
+{{- if .Values.rabbitmq.internal -}}
+  {{- if hasKey .Values.rabbitmq "monitoring" }}
+      {{- if .Values.rabbitmq.monitoring }}
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
@@ -50,3 +53,6 @@ spec:
   namespaceSelector:
     matchNames:
       - {{ .Release.Namespace | quote }}
+    {{- end }}
+  {{- end }}
+{{- end }}

@@ -99,6 +99,7 @@ rabbitmq:
   auth:
     username: user
     password: password
+  monitoring: False
 
 database:
   internal: True

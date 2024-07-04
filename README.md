@@ -126,6 +126,7 @@ RabbitMQ is used for the queue system in the architecture. We are using the rabb
 | `rabbitmq.auth.user`     | Username for rabbitmq (if external server)                   | `""`   |
 | `rabbitmq.auth.password` | Password for rabbitmq (if external server)                   | `""`   |
 | `rabbitmq.host`          | Host for external rabbitmq cluster                           | `""`   |
+| `rabbitmq.monitoring`    | Monitor RabbitMQ using Prometheus (if internal server)       | `False`|
 
 ### Database
 
