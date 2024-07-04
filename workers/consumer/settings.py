@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     RABBITMQ_USER: str = Field(default="guest")
     RABBITMQ_PORT: int = Field(default=5672)
     RPC_RECONNECT_ATTEMPTS: int = Field(default=10)
+    RPC_QUEUE_EXPIRATION: int = Field(default=60000)
     SERVICE_NAME: Optional[str] = Field(default=None)
     TARGET_PORT: int = Field(default=8080)
     USE_PROBES: int = Field(default=0)

@@ -2,7 +2,12 @@ import asyncio
 import logging
 
 from aio_pika import connect, Message, DeliveryMode
-from aio_pika.abc import AbstractConnection, AbstractChannel, AbstractQueue, AbstractIncomingMessage
+from aio_pika.abc import (
+    AbstractConnection,
+    AbstractChannel,
+    AbstractQueue,
+    AbstractIncomingMessage,
+)
 from metrics import try_update_metrics
 from settings import settings
 
@@ -34,8 +39,16 @@ class RPCServer:
             self.connection = await connect(url=self.url)
             self.channel = await self.connection.channel()
             await self.channel.set_qos(prefetch_count=1)
-            self.queue = await self.channel.declare_queue(name=MODEL, durable=True)
-            self.consumer_tag = await self.queue.consume(self.on_message_callback, no_ack=False)
+            self.queue = await self.channel.declare_queue(
+                name=MODEL,
+                durable=True,
+                arguments={
+                    "x-expires": settings.RPC_QUEUE_EXPIRATION,
+                },  # the queue will be deleted when no consumer is connected to it for 60 seconds
+            )
+            self.consumer_tag = await self.queue.consume(
+                self.on_message_callback, no_ack=False
+            )
             self.connection.close_callbacks.add(self.try_reconnect)
         except Exception as e:
             logging.error(f"Error connecting to RabbitMQ: {e}")
@@ -57,8 +70,11 @@ class RPCServer:
         logging.info(f"Message consumed on queue {MODEL}")
 
         current_avg_token, current_nb_users = await try_update_metrics()
-        
-        while current_avg_token < AVG_TOKEN_THRESHOLD and current_nb_users > NB_USER_THRESHOLD:
+
+        while (
+            current_avg_token < AVG_TOKEN_THRESHOLD
+            and current_nb_users > NB_USER_THRESHOLD
+        ):
             await asyncio.sleep(WAIT_FOR_LLM_DELAY)
             current_avg_token, current_nb_users = await try_update_metrics()
 
@@ -69,7 +85,7 @@ class RPCServer:
                     delivery_mode=DeliveryMode.PERSISTENT,
                     correlation_id=str(message.correlation_id),
                 ),
-                routing_key=message.reply_to
+                routing_key=message.reply_to,
             )
             logging.info(f"LLM URL for model {MODEL} sent to API")
         except Exception as e:
@@ -83,7 +99,7 @@ class RPCServer:
             if not self.connection.is_closed and not self.channel.is_closed:
                 return True
         return False
-    
+
     async def reconnect(self):
         logging.info("Attempting to reconnect RPC client...")
         try:

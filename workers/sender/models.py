@@ -19,7 +19,6 @@ async def get_models(settings: Settings):
         {
             "id": binding["destination"],
             "object": "model",
-            "created": int(time.time()),
             "owned_by": binding["destination"],
         }
         # We need to filter out the default entries of the default exchange
