@@ -17,6 +17,8 @@ settings = Settings()
 database = None
 rpc_client = None
 
+logging.basicConfig(level=settings.LOG_LEVEL, format="%(asctime)s:%(levelname)s:%(name)s: %(message)s")
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -39,18 +41,17 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
-
 async def authorize(request: Request):
 
     authorization = request.headers.get("Authorization")
 
     if not authorization:
-        raise Exception("No token provided")
+        raise Exception("NO_TOK")
 
     token_parts = authorization.split()
 
     if len(token_parts) != 2 or token_parts[0] != "Bearer":
-        raise Exception("Invalid token")
+        raise Exception("INV_TOK")
 
     user = await database.execute(
         "SELECT * FROM users WHERE token = %s",
@@ -59,7 +60,7 @@ async def authorize(request: Request):
     )
 
     if not user:
-        raise Exception("Unauthorized")
+        raise Exception("UNAUTH")
 
     return user
 
@@ -67,7 +68,6 @@ async def authorize(request: Request):
 @app.get("/v1/models")
 async def models():
     return JSONResponse(content=await get_models(settings), status_code=200)
-
 
 @app.middleware("http")
 async def proxy(request: Request, call_next):
@@ -90,7 +90,19 @@ async def proxy(request: Request, call_next):
     try:
         user = await authorize(request)
     except Exception as e:
-        return JSONResponse(content={"error": str(e)}, status_code=401)
+            match str(e):
+                case "NO_TOK":
+                    logging.error("No token provided")
+                    return JSONResponse(content={"error": "No token provided"}, status_code=401)
+                case "INV_TOK":
+                    logging.error("Invalid token")
+                    return JSONResponse(content={"error": "Invalid token"}, status_code=401)
+                case "UNAUTH":
+                    logging.error("Unauthorized")
+                    return JSONResponse(content={"error": "Unauthorized"}, status_code=401)
+                case e:
+                    logging.error(f"An unexpected error occurred while authorizing: {e}")
+                    return JSONResponse(content={"An internal error occured"}, status_code=500)
     user_id, token, priority, threshold, client_type = user
     threshold = 0 if threshold is None else threshold
 

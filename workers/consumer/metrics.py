@@ -14,12 +14,8 @@ DEFAULT_RETRY = 5
 
 async def update_metrics():
     async with AsyncClient(base_url=LLM_URL) as http_client:
-        try:
-            response = await http_client.get("/metrics/")
-            response.raise_for_status()
-        except Exception as e:
-            logging.error(f"Failed to update model metrics: {e}")
-            raise
+        response = await http_client.get("/metrics/")
+        response.raise_for_status()
     
     content = response.text
 
@@ -40,8 +36,8 @@ async def try_update_metrics(retry: int = DEFAULT_RETRY):
     for attempt in range(retry):
         try:
             return await update_metrics()
-        except Exception:
-            logging.debug(f"Attempt {attempt+1}/{retry} to update model metrics failed")
+        except Exception as e:
+            logging.error(f"Attempt {attempt+1}/{retry} to update model metrics failed: {e}")
             await asyncio.sleep(attempt)
     else:
         logging.error(f"Failed to update model metrics atfer {retry} attempts")
