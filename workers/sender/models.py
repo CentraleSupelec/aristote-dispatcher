@@ -23,10 +23,12 @@ async def get_models(settings: Settings):
             "owned_by": binding["destination"],
         }
         # We need to filter out the default entries of the default exchange
-        for binding in response.json() if not binding["destination"].startswith("amq.")
+        for binding in response.json()
+        if not binding["destination"].startswith("amq.")
     ]
 
     return models
+
 
 async def get_model_by_id(settings: Settings, id: str):
     global models
@@ -35,5 +37,9 @@ async def get_model_by_id(settings: Settings, id: str):
 
     if id not in model_ids:
         await get_models(settings)
-        return [model for model in models if model["id"] == id][0]
+
+    for model in models:
+        if model["id"] == id:
+            return model
+
     return None

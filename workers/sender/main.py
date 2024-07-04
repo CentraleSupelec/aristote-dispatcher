@@ -91,10 +91,10 @@ async def proxy(request: Request, call_next):
         user = await authorize(request)
     except Exception as e:
         return JSONResponse(content={"error": str(e)}, status_code=401)
-    user_id, token, priority, threshold = user
+    user_id, token, priority, threshold, client_type = user
     threshold = 0 if threshold is None else threshold
 
-    logging.info("User fetched")
+    logging.info(f"User {user_id} authorized")
 
     # Handle GET request normally
     if request.method == "GET":
@@ -132,12 +132,12 @@ async def proxy(request: Request, call_next):
 
     if type(rpc_response) == int:
         response_content = {"error": "Too many people using the service"}
-        # TODO: Don't distinguish users by stream or not, use human / machine instead
-        if json_body["stream"]:
-            # in case of stream, we set status code to 200 to avoid OpenWebUI to crash
-            return PlainTextResponse(content=response_content, status_code=200)
-        else:
-            return JSONResponse(content=response_content, status_code=503)
+        match client_type:
+            case "chat":
+                return JSONResponse(content=response_content, status_code=200)
+            case _:
+                return JSONResponse(content=response_content, status_code=503)
+
     logging.info("rpc response received")
 
     llm_url = rpc_response.body.decode()

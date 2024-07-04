@@ -29,6 +29,7 @@ services:
   #     - "3306:3306"
 
   sender:
+    platform: linux/amd64
     build:
       context: ./sender
     ports:
