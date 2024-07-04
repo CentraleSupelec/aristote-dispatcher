@@ -17,7 +17,7 @@ This project originates in the need to optimize the use of GPUs by providing a w
 
 Several architectures are possibles but we had two criteria that explain why we designed it that way:
 - We want a system that is transparent for the client, as if he was asking a regular LLM following the Open AI standards.
-- We don't want to re-implement the whole Open AI API and have to maintain it.For instance, we basically want that the LLM responds his own errors and we just "forward" the response.
+- We don't want to re-implement the whole OpenAI API and have to maintain it. For instance, we want that the LLM responds to his own errors and we just "forward" the response.
 
 To respect this requirements, we divided the the project into three main components:
 
@@ -71,6 +71,8 @@ In this section, we detail all the environment variables you can set to configur
 
 - DB_PORT (int, optional): default = 3306 if DATABASE_TYPE is "mysql" or 5432 if DATABASE_TYPE is "postgresql"
 
+- RPC_RECONNECT_ATTEMPTS (int, default="10"): Number of attempts to reconnect to RPC before setting channel to unhealthy.
+
 ### Consumer
 
 - MODEL (str, required): The LLM's model name that goes with this container.
@@ -94,6 +96,10 @@ In this section, we detail all the environment variables you can set to configur
 - TARGET_PORT (int, default=8080): 
 
 - LLM_URL (str, optional): When deployed in a Kubernetes cluster, you should not set it and let the program construct it with POD_NAME, SERVICE_NAME and TARGET_PORT. To test locally, use it to overwrite the address of the LLM.
+
+- RPC_RECONNECT_ATTEMPTS (int, default="10"): Number of attempts to reconnect to RPC before setting channel to unhealthy.
+
+- USE_PROBES (int {0, 1}, default="0"): Use specific routes to communicate health state with Kubernetes.
 
 
 ## Installation
