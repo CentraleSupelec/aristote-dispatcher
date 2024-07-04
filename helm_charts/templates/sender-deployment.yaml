@@ -102,11 +102,11 @@ spec:
             - name: RABBITMQ_MANAGEMENT_PORT
               value: {{ .Values.rabbitmq.managementPort | quote }}
             {{ end }}
-            - name: DATABASE_TYPE
+            - name: DB_TYPE
               value: {{ .Values.database.type | quote }}
             {{ if .Values.database.internal }}
             - name: DB_HOST
-              value: {{ .Release.Name }}-mysql
+              value: {{ .Release.Name }}-{{ .Values.database.type }}
             {{ else }}
             - name: DB_HOST
               value: {{ .Values.database.host | quote }}

@@ -10,11 +10,12 @@ from settings import settings
 shutdown_signal = asyncio.Event()
 
 
-async def main_consumer():   
+async def main_consumer():
     await rpc_server.connect()
 
-    if settings.USE_PROBES: await prober.set_started()
-    
+    if settings.USE_PROBES:
+        await prober.set_started()
+
     # Consumer is running until shutdown signal is received
     # Until then, all action occurs in the on_message_callback
     # of the RPCServer class
@@ -34,16 +35,19 @@ if __name__ == "__main__":
     def shutdown():
         logging.info("Shutting down consumer...")
         shutdown_signal.set()
-        
+
     for sig in (signal.SIGINT, signal.SIGTERM):
         loop.add_signal_handler(sig, shutdown)
 
-    if settings.USE_PROBES: loop.run_until_complete(prober.setup())
+    if settings.USE_PROBES:
+        loop.run_until_complete(prober.setup())
 
     try:
         loop.run_until_complete(main_consumer())
     except Exception as e:
         logging.fatal(f"Consumer fatal error: {e}")
+        raise
     finally:
-        if settings.USE_PROBES: loop.run_until_complete(prober.cleanup())
+        if settings.USE_PROBES:
+            loop.run_until_complete(prober.cleanup())
         loop.close()
