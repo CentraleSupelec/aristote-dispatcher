@@ -10,7 +10,11 @@ from settings import settings
 LLM_URL = settings.LLM_URL
 
 DEFAULT_RETRY = 5
+
+# Consumer will wait for MAX_INITIAL_METRICS_RETRIES*INITIAL_METRCIS_WAIT seconds
+# Before crashing if vllm is not ready
 MAX_INITIAL_METRICS_RETRIES = 300
+INITIAL_METRCIS_WAIT = 5
 
 
 async def update_metrics():
@@ -55,8 +59,7 @@ async def try_update_metrics(retry: int = DEFAULT_RETRY):
         raise Exception(f"Failed to update model metrics atfer {retry} attempts")
 
 
-async def wait_for_metrics():
-    # Waiting for vllm to be ready
+async def wait_for_vllm():
     for i in range(MAX_INITIAL_METRICS_RETRIES):
         try:
             await update_metrics()
@@ -64,8 +67,8 @@ async def wait_for_metrics():
             break
         except Exception as e:
             logging.error(
-                f"Waiting for vllm to be ready ({i}/{MAX_INITIAL_METRICS_RETRIES}): {e}"
+                f"Waiting for vllm to be ready ({i+1}/{MAX_INITIAL_METRICS_RETRIES}): {e}"
             )
-            await asyncio.sleep(5)
+            await asyncio.sleep(INITIAL_METRCIS_WAIT)
     else:
-        raise Exception(f"vllm is not ready after {5*MAX_INITIAL_METRICS_RETRIES}s")
+        raise Exception(f"vllm is not ready after {INITIAL_METRCIS_WAIT*MAX_INITIAL_METRICS_RETRIES}s")

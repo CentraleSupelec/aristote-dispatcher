@@ -5,15 +5,14 @@ import signal
 from probes import prober
 from rpc_server import rpc_server
 from settings import settings
-from metrics import wait_for_metrics
+from metrics import wait_for_vllm
 
 
 shutdown_signal = asyncio.Event()
 
 
 async def main_consumer():
-
-    await wait_for_metrics()
+    await wait_for_vllm()
 
     await rpc_server.connect()
 

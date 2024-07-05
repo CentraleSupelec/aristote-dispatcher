@@ -14,6 +14,7 @@ async def get_models(settings: Settings):
             url=f"/api/exchanges/%2F/amq.default/bindings/source",
             auth=(settings.RABBITMQ_USER, settings.RABBITMQ_PASSWORD),
         )
+        response.raise_for_status()
 
     models = [
         {
