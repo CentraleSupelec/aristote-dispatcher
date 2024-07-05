@@ -47,7 +47,8 @@ class RPCServer:
                 },  # the queue will be deleted when no consumer is connected to it for 60 seconds
             )
             self.consumer_tag = await self.queue.consume(
-                self.on_message_callback, no_ack=False
+                self.on_message_callback,
+                no_ack=True,
             )
             self.connection.close_callbacks.add(self.try_reconnect)
         except Exception as e:
@@ -91,8 +92,6 @@ class RPCServer:
         except Exception as e:
             logging.error(f"An error occured while publishing message: {e}")
             raise
-        else:
-            await message.ack()
 
     async def check_connection(self) -> bool:
         if self.connection and self.channel:

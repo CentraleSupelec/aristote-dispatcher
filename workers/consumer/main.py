@@ -5,16 +5,17 @@ import signal
 from probes import prober
 from rpc_server import rpc_server
 from settings import settings
+from metrics import wait_for_metrics
 
 
 shutdown_signal = asyncio.Event()
 
 
 async def main_consumer():
-    await rpc_server.connect()
 
-    if settings.USE_PROBES:
-        await prober.set_started()
+    await wait_for_metrics()
+
+    await rpc_server.connect()
 
     # Consumer is running until shutdown signal is received
     # Until then, all action occurs in the on_message_callback

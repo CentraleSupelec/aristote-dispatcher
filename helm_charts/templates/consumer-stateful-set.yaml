@@ -108,13 +108,6 @@ spec:
             initialDelaySeconds: 2
             periodSeconds: 30
             failureThreshold: 5
-          startupProbe:
-            httpGet:
-              path: /startup
-              port: {{ $val.consumer.probePort }}
-            initialDelaySeconds: 3
-            periodSeconds: 15
-            failureThreshold: 10
           {{ else }}
           livenessProbe:
             exec:

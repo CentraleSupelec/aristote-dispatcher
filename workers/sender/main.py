@@ -2,6 +2,10 @@ import json
 import logging
 import time
 from contextlib import asynccontextmanager
+import asyncio
+from starlette.background import BackgroundTask, BackgroundTasks
+from aio_pika.exceptions import ChannelClosed
+
 from db import Database
 from fastapi import FastAPI, Request
 from fastapi.responses import StreamingResponse, JSONResponse, PlainTextResponse
@@ -9,7 +13,6 @@ from httpx import AsyncClient
 from models import get_model_by_id, get_models
 from rpc_client import RPCClient
 from settings import Settings
-from starlette.background import BackgroundTask, BackgroundTasks
 
 
 settings = Settings()
@@ -17,7 +20,9 @@ settings = Settings()
 database = None
 rpc_client = None
 
-logging.basicConfig(level=settings.LOG_LEVEL, format="%(asctime)s:%(levelname)s:%(name)s: %(message)s")
+logging.basicConfig(
+    level=settings.LOG_LEVEL, format="%(asctime)s:%(levelname)s:%(name)s: %(message)s"
+)
 
 
 @asynccontextmanager
@@ -40,6 +45,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(lifespan=lifespan)
+
 
 async def authorize(request: Request):
 
@@ -69,6 +75,7 @@ async def authorize(request: Request):
 async def models():
     return JSONResponse(content=await get_models(settings), status_code=200)
 
+
 @app.middleware("http")
 async def proxy(request: Request, call_next):
     start = time.localtime()
@@ -90,19 +97,23 @@ async def proxy(request: Request, call_next):
     try:
         user = await authorize(request)
     except Exception as e:
-            match str(e):
-                case "NO_TOK":
-                    logging.error("No token provided")
-                    return JSONResponse(content={"error": "No token provided"}, status_code=401)
-                case "INV_TOK":
-                    logging.error("Invalid token")
-                    return JSONResponse(content={"error": "Invalid token"}, status_code=401)
-                case "UNAUTH":
-                    logging.error("Unauthorized")
-                    return JSONResponse(content={"error": "Unauthorized"}, status_code=401)
-                case e:
-                    logging.error(f"An unexpected error occurred while authorizing: {e}")
-                    return JSONResponse(content={"An internal error occured"}, status_code=500)
+        match str(e):
+            case "NO_TOK":
+                logging.error("No token provided")
+                return JSONResponse(
+                    content={"error": "No token provided"}, status_code=401
+                )
+            case "INV_TOK":
+                logging.error("Invalid token")
+                return JSONResponse(content={"error": "Invalid token"}, status_code=401)
+            case "UNAUTH":
+                logging.error("Unauthorized")
+                return JSONResponse(content={"error": "Unauthorized"}, status_code=401)
+            case e:
+                logging.error(f"An unexpected error occurred while authorizing: {e}")
+                return JSONResponse(
+                    content={"An internal error occured"}, status_code=500
+                )
     user_id, token, priority, threshold, client_type = user
     threshold = 0 if threshold is None else threshold
 
@@ -140,7 +151,21 @@ async def proxy(request: Request, call_next):
             status_code=404,
         )
 
-    rpc_response = await rpc_client.call(priority, threshold, requested_model)
+    try:
+        rpc_response = await rpc_client.call(priority, threshold, requested_model)
+    except ChannelClosed as e:
+        # the queue may have been deleted (ex: consumer does not exist anymore)
+        logging.debug(
+            f"Queue {requested_model} seems to not exist anymore, refreshing models"
+        )
+        asyncio.create_task(get_models(settings))
+        return JSONResponse(
+            content={
+                "object": "error",
+                "error": "Unknown model",
+            },
+            status_code=404,
+        )
 
     if type(rpc_response) == int:
         response_content = {"error": "Too many people using the service"}

@@ -5,10 +5,10 @@ metadata:
   name: consumer-pod-monitor
 spec:
   podMetricsEndpoints:
-    - port: {{ .Values.inferenceserver.port | quote }}
+    - targetPort: {{ .Values.inferenceserver.port }}
   selector:
     matchLabels:
-      app.kubernetes.io/component: {{ include "vllm.fullname" $file }}-consumer-{{ .name }}
+      app.kubernetes.io/name: {{ include "vllm.fullname" $file }}-consumer
   namespaceSelector:
     matchNames:
       - {{ .Release.Namespace | quote }}
