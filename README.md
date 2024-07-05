@@ -38,6 +38,15 @@ List of all the models to deploy in the application. It can be multiple models.
 `jsonConfiguration` and `theta` parameters of the `ropeScaling` configuration correspond to `--rope-scaling` and
 `--rope-theta` arguments of the [VLLM engine](https://docs.vllm.ai/en/latest/models/engine_args.html).
 
+### PVC
+
+Allows vllm pods to restart without having to download models each time.
+The PVC is shared between all vllm instances.
+
+| Name                   | Description                                                           | Value                                                   |
+|------------------------|-----------------------------------------------------------------------|---------------------------------------------------------|
+| `storageSize`                | Size of PVC                 | `"64Gi"`                                                    |
+
 ### Tokens
 
 This should be a list of all the tokens wanted and their respective priority

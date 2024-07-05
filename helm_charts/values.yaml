@@ -12,6 +12,9 @@ models:
       theta: "500000"
     replicaCount: 1
 
+pvc:
+  storageSize: "64Gi"
+
 tokens: # Lowest priority is more important
   - token: token
     priority: 1

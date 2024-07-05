@@ -44,6 +44,8 @@ spec:
           - vllm.entrypoints.openai.api_server
           - --model
           - {{ .model | quote }}
+          - --download-dir
+          - "/models/{{ .model }}"
           {{- if not (eq .servedModelName "")}}
           - --served_model_name={{ .servedModelName }}
           {{- end }}
@@ -91,6 +93,9 @@ spec:
             {{- with $val.inferenceserver.env }}
             {{ toYaml . | nindent 12 }}
             {{- end }}
+          volumeMounts:
+            - name: model-storage
+              mountPath: /models
         - name: {{ .name }}-consumer
           securityContext:
             {{- toYaml $val.consumer.securityContext | nindent 12 }}
@@ -181,6 +186,10 @@ spec:
             {{- with $val.consumer.env }}
             {{ toYaml . | nindent 12 }}
             {{- end }}
+      volumes:
+        - name: model-storage
+          persistentVolumeClaim:
+            claimName: {{ $file.Release.Name }}-model-storage
       {{- with $val.consumer.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
