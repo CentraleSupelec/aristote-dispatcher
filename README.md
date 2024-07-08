@@ -1,23 +1,22 @@
 # Helm chart for large scale LLM
 
-Deployement of LLM at a large scale using VLL server for inference
+Deployement of LLM at a large scale using VLL server for inference.
 
 Architecture using 
-- an API block written in python puting the requests received in
-- a rabbitmq queue which 
-- a python script reads and send the message to 
-- a VLLM inference server container.
-- The message are then sent back to the client through rabbitmq
+- API block written in python
+- RabbitMQ priority queue 
+- Python script that reads and send the message 
+- VLLM inference server container
+- Messages are sent back to the client through RabbitMQ
 
 ## Prerequisites in the cluster
 
-- Gpu-operator from Nvidia should be installed in order to access the gpus (https://docs.nvidia.com/datacenter/cloud-native/gpu-operator/latest/getting-started.html)
-- Rabbitmq operator should be installed if using the internal rabbitmq cluster (values for the cluster are ing rabbitmq-cluster.yaml) (https://www.rabbitmq.com/kubernetes/operator/install-operator)
-- ingress-nginx to use the ingress part (https://docs.nginx.com/nginx-ingress-controller/installation/)
-
+- [GPU Operator](https://docs.nvidia.com/datacenter/cloud-native/gpu-operator/latest/getting-started.html) from Nvidia should be installed in order to access the GPUs
+- [RabbitMQ Operator](https://www.rabbitmq.com/kubernetes/operator/install-operator) should be installed if using the internal RabbitMQ cluster (values for the cluster are in rabbitmq-cluster.yaml)
+- [ingress-nginx](https://docs.nginx.com/nginx-ingress-controller/installation/) for the ingress
 
 External chart : 
-- using a mysql/postgresql chart to have a database for the identification tokens
+- MySQL/PostgreSQL chart to have a database for identification tokens
 
 ## Values
 
@@ -35,9 +34,11 @@ List of all the models to deploy in the application. It can be multiple models.
 | `huggingface_token`    | Token used for pulling models from huggingface                        | `""`                                                    |
 | `replicaCount`         | Replica count for the model                                           | `1`                                                     |
 | `ropeScaling`          | Object representing RoPE scaling configuration to apply for the model | `{enabled: false, jsonConfiguration: "{}", theta: ""}`  |
+| `pvc.enabled`          | Store model in a PersistentVolumeClaim to allow vllm to restart without re-downloading the model    | `false`                                               |
+| `pvc.storageSize`      | Choose the size of the PVC (if enabled)                               | `"16Gi"`                                                |
 
 `jsonConfiguration` and `theta` parameters of the `ropeScaling` configuration correspond to `--rope-scaling` and
-`--rope-theta` arguments of the [vllm engine](https://docs.vllm.ai/en/latest/models/engine_args.html).
+`--rope-theta` arguments of the [VLLM engine](https://docs.vllm.ai/en/latest/models/engine_args.html).
 
 ### Tokens
 
@@ -66,7 +67,7 @@ The sender is the python block which reproduces the API and sends the message do
 | `sender.port`               | Port used by the sender port                                                                                  | `8080`                                       |
 | `sender.resources`          | resources specified for the container                                                                         | `""`                                         |
 | `sender.replicaCount`       | Replica count for the sender                                                                                  | `1`                                          |
-| `sender.logLevel`           | Log level for the container :                                                                                 |                                              |
+| `sender.logLevel`           | Log level for the container :                                                                                 |  `"20"`                                        |
 | `sender.env`                | Env vars to ad to the container                                                                               | `[]`                                         |
 | `sender.podAnnotations`     | Pod annotations for the sender                                                                                | `{}`                                         |
 | `sender.podSecurityContext` | Security context for the pod                                                                                  | `{}`                                         |
@@ -74,26 +75,31 @@ The sender is the python block which reproduces the API and sends the message do
 | `sender.tolerations`        | Tolerations for the container                                                                                 | `[]`                                         |
 | `sender.affinty`            | Node affinity and pod afinity for the pod : used if you want to separate the cpu and the gpu part for example | `{}`                                         |
 | `sender.nodeSelector`       | Node selector for the pod                                                                                     | `{}`                                         |
+| `sender.rpcReconnectAttempts`       | Number of attemps to reconnect to RPC before setting pod to unhealthy                                                                                     | `10`                                         |
 
 ### Consumer
 
-The consumer is the python block which pulls messages from the rabbitmq queue and sends them to the inference server.
+The consumer is the Python block which pulls messages from the RabbitMQ queue and sends them to the inference server.
 
-| Name                          | Description                                                                                                   | Value                                          |
-|-------------------------------|---------------------------------------------------------------------------------------------------------------|------------------------------------------------|
-| `consumer.image.repository`   | Repository for the image                                                                                      | `centralesupelec/aristote-dispatcher-consumer` |
-| `consumer.image.pullPolicy`   | Pull policy for the image                                                                                     | `IfNotPresent`                                 |
-| `consumer.image.tag`          | Tag for the image                                                                                             | `latest`                                       |
-| `consumer.port`               | Port used by the consuer port                                                                                 | `8080`                                         |
-| `consumer.resources`          | resources specified for the container                                                                         | `""`                                           |
-| `consumer.replicaCount`       | Replica count for the consumer                                                                                | `1`                                            |
-| `consumer.env`                | Env vars to ad to the container                                                                               | `[]`                                           |
-| `consumer.podAnnotations`     | Pod annotations for the sender                                                                                | `{}`                                           |
-| `consumer.podSecurityContext` | Security context for the pod                                                                                  | `{}`                                           |
-| `consumer.securityContext`    | Security context for the container                                                                            | `{}`                                           |
-| `consumer.tolerations`        | Tolerations for the container                                                                                 | `[]`                                           |
-| `consumer.affinty`            | Node affinity and pod afinity for the pod : used if you want to separate the cpu and the gpu part for example | `{}`                                           |
-| `consumer.nodeSelector`       | Node selector for the pod                                                                                     | `{}`                                           |
+| Name                           | Description                                                                                                   | Value                                          |
+|--------------------------------|---------------------------------------------------------------------------------------------------------------|------------------------------------------------|
+| `consumer.image.repository`    | Repository for the image                                                                                      | `centralesupelec/aristote-dispatcher-consumer` |
+| `consumer.image.pullPolicy`    | Pull policy for the image                                                                                     | `IfNotPresent`                                 |
+| `consumer.image.tag`           | Tag for the image                                                                                             | `latest`                                       |
+| `consumer.port`                | Port used by the consuer port                                                                                 | `8080`                                         |
+| `consumer.resources`           | resources specified for the container                                                                         | `""`                                           |
+| `consumer.replicaCount`        | Replica count for the consumer                                                                                | `1`                                            |
+| `consumer.env`                 | Env vars to ad to the container                                                                               | `[]`                                           |
+| `consumer.podAnnotations`      | Pod annotations for the sender                                                                                | `{}`                                           |
+| `consumer.podSecurityContext`  | Security context for the pod                                                                                  | `{}`                                           |
+| `consumer.securityContext`     | Security context for the container                                                                            | `{}`                                           |
+| `consumer.tolerations`         | Tolerations for the container                                                                                 | `[]`                                           |
+| `consumer.affinty`             | Node affinity and pod afinity for the pod : used if you want to separate the cpu and the gpu part for example | `{}`                                           |
+| `consumer.nodeSelector`        | Node selector for the pod                                                                                     | `{}`                                           |
+| `consumer.rpcReconnectAttempts`| Number of attemps to reconnect to RPC before setting pod to unhealthy                                         | `10`                                           |
+| `consumer.rpcQueueExpiration`  | Number of milliseconds to wait before removing queue in RabbitMQ if consumer doesn't respond                  | `30000`                                        |
+| `consumer.probe.enabled`       | The pod uses routes to communicate its status to Kubernetes                                                   | `true`                                         |
+| `consumer.probe.port`          | Port used for probes (if probes are enabled)                                                                  | `8081`                                         |
 
 
 ### Inference server
@@ -111,9 +117,9 @@ The inference server is using the GPU for ingereing on the LLM. We are using the
 | `inferenceserver.env`              | Env vars to ad to the container                                 | `[]`               |
 
 
-### Rabbitmq
+### RabbitMQ
 
-Rabbitmq is used for the queue system in the architecture. We are using the rabbitmq cluster operator to create the cluster. The file is ```rabbitmq.yaml```. It is also compatible with an external rabbitmq cluster.
+RabbitMQ is used for the queue system in the architecture. We are using the rabbitmq cluster operator to create the cluster. The file is ```rabbitmq.yaml```. It is also compatible with an external rabbitmq cluster.
 
 | Name                     | Description                                                  | Value  |
 |--------------------------|--------------------------------------------------------------|--------|
@@ -122,6 +128,7 @@ Rabbitmq is used for the queue system in the architecture. We are using the rabb
 | `rabbitmq.auth.user`     | Username for rabbitmq (if external server)                   | `""`   |
 | `rabbitmq.auth.password` | Password for rabbitmq (if external server)                   | `""`   |
 | `rabbitmq.host`          | Host for external rabbitmq cluster                           | `""`   |
+| `rabbitmq.monitoring`    | Monitor RabbitMQ using Prometheus (if internal server)       | `False`|
 
 ### Database
 

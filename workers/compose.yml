@@ -2,8 +2,8 @@ services:
   rabbitmq:
     image: rabbitmq:3.13-management
     ports:
-      - 5672:5672  # Port pour la communication AMQP
-      - 15672:15672  # Port pour l'interface web de RabbitMQ
+      - 5672:5672 # Port pour la communication AMQP
+      - 15672:15672 # Port pour l'interface web de RabbitMQ
 
   postgres:
     image: postgres
@@ -15,7 +15,7 @@ services:
       POSTGRES_DB: test
     ports:
       - 5432:5432
-  
+
   # mysql:
   #   image: mysql
   #   volumes:
@@ -29,6 +29,7 @@ services:
   #     - "3306:3306"
 
   sender:
+    platform: linux/amd64
     build:
       context: ./sender
     ports:
@@ -39,11 +40,14 @@ services:
       RABBITMQ_PASSWORD: guest
       RABBITMQ_HOST: rabbitmq
       RABBITMQ_PORT: 5672
-      DATABASE_TYPE: postgresql
+      DB_TYPE: postgresql
       DB_HOST: postgres
       DB_USER: user
       DB_PASSWORD: password
       DB_DATABASE: test
+    restart: on-failure
+    depends_on:
+      - rabbitmq
 
   consumer:
     build:
@@ -56,3 +60,6 @@ services:
       RABBITMQ_HOST: rabbitmq
       RABBITMQ_PORT: 5672
       LLM_URL: http://host.docker.internal:50000
+    restart: on-failure
+    depends_on:
+      - rabbitmq

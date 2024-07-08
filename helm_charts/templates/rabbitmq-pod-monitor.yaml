@@ -1,0 +1,19 @@
+{{- if .Values.rabbitmq.internal -}}
+  {{- if hasKey .Values.rabbitmq "monitoring" }}
+      {{- if .Values.rabbitmq.monitoring }}
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: rabbitmq-cluster-operator
+spec:
+  podMetricsEndpoints:
+    - port: metrics
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: rabbitmq-operator
+  namespaceSelector:
+    matchNames:
+      - {{ .Release.Namespace | quote }}
+    {{- end }}
+  {{- end }}
+{{- end }}

@@ -1,2 +1,5 @@
-httpx
 aio_pika
+aiohttp
+httpx
+pydantic
+pydantic_settings

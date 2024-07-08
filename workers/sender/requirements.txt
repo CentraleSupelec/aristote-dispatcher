@@ -4,3 +4,6 @@ asyncpg
 requests
 aiomysql
 httpx
+pydantic_settings
+pydantic
+cryptography

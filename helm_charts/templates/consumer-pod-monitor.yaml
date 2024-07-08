@@ -1,0 +1,14 @@
+{{ $file := . }}
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: consumer-pod-monitor
+spec:
+  podMetricsEndpoints:
+    - targetPort: {{ .Values.inferenceserver.port }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "vllm.fullname" $file }}-consumer
+  namespaceSelector:
+    matchNames:
+      - {{ .Release.Namespace | quote }}

@@ -1,6 +1,22 @@
 {{ $val := .Values }}
 {{ $file := . }}
 {{- range .Values.models }}
+{{- if .pvc.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ $file.Release.Name }}-model-storage-{{ .name }}
+  annotations:
+    "helm.sh/resource-policy": keep
+    "argocd.argoproj.io/hook": Skip
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .pvc.storageSize }}
+{{- end }}
+---
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -44,6 +60,8 @@ spec:
           - vllm.entrypoints.openai.api_server
           - --model
           - {{ .model | quote }}
+          - --download-dir
+          - "/model"
           {{- if not (eq .servedModelName "")}}
           - --served_model_name={{ .servedModelName }}
           {{- end }}
@@ -91,25 +109,37 @@ spec:
             {{- with $val.inferenceserver.env }}
             {{ toYaml . | nindent 12 }}
             {{- end }}
+          {{- if .pvc.enabled }}
+          volumeMounts:
+            - name: model-storage
+              mountPath: /model
+          {{- end }}
         - name: {{ .name }}-consumer
           securityContext:
             {{- toYaml $val.consumer.securityContext | nindent 12 }}
           image: "{{ $val.consumer.image.repository }}:{{ $val.consumer.image.tag }}"
           imagePullPolicy: {{ $val.consumer.image.pullPolicy | quote }}
+          {{ if $val.consumer.useProbes }}
+          ports:
+            - name: http
+              containerPort: {{ $val.consumer.probePort }}
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: {{ $val.consumer.probePort }}
+            initialDelaySeconds: 2
+            periodSeconds: 30
+            failureThreshold: 5
+          {{ else }}
           livenessProbe:
             exec:
               command:
               - sh
             initialDelaySeconds: 2
-            periodSeconds: 30
-            failureThreshold: 10
-          readinessProbe:
-            exec:
-              command:
-              - sh
-            initialDelaySeconds: 2
-            periodSeconds: 30
-            failureThreshold: 10
+            periodSeconds: 15
+            failureThreshold: 5
+          {{ end }}
           resources:
             {{- toYaml $val.consumer.resources | nindent 12 }}
           env:
@@ -123,6 +153,34 @@ spec:
               value: {{ $val.inferenceserver.port | quote }}
             - name: SUFFIX
               value: ""
+            - name: USE_PROBES
+              {{- if hasKey $val.consumer "probe" }}
+              {{- if $val.consumer.probe.enabled }}
+              value: "1"
+              {{- else }}
+              value: "0"
+              {{- end }}
+              {{- else }}
+              value: "0"
+              {{- end }}
+            {{- if hasKey $val.consumer "probe" }}
+            {{- if $val.consumer.probe.enabled }}
+            - name: PROBE_PORT
+              value: {{ $val.consumer.probe.port | quote }}
+            {{- end }}
+            {{- end }}
+            - name: RPC_RECONNECT_ATTEMPTS
+              {{ if $val.consumer.rpcReconnectAttempts }}
+              value: {{ $val.consumer.rpcReconnectAttempts | quote }}
+              {{ else }}
+              value: "10"
+              {{ end }}
+            - name: RPC_QUEUE_EXPIRATION
+              {{ if $val.consumer.rpcQueueExpiration }}
+              value: {{ $val.consumer.rpcQueueExpiration | quote }}
+              {{ else }}
+              value: "30000"
+              {{ end }}
             {{- if $val.rabbitmq.internal }}
             - name: RABBITMQ_HOST
               valueFrom:
@@ -162,6 +220,12 @@ spec:
             {{- with $val.consumer.env }}
             {{ toYaml . | nindent 12 }}
             {{- end }}
+      {{- if .pvc.enabled }}
+      volumes:
+        - name: model-storage
+          persistentVolumeClaim:
+            claimName: {{ $file.Release.Name }}-model-storage-{{ .name }}
+      {{- end }}
       {{- with $val.consumer.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
