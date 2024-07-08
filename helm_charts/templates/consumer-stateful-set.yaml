@@ -154,11 +154,21 @@ spec:
             - name: SUFFIX
               value: ""
             - name: USE_PROBES
-              {{ if $val.consumer.useProbes }}
+              {{- if hasKey $val.consumer "probe" }}
+              {{- if $val.consumer.probe.enabled }}
               value: "1"
-              {{ else }}
+              {{- else }}
               value: "0"
-              {{ end }}
+              {{- end }}
+              {{- else }}
+              value: "0"
+              {{- end }}
+            {{- if hasKey $val.consumer "probe" }}
+            {{- if $val.consumer.probe.enabled }}
+            - name: PROBE_PORT
+              value: {{ $val.consumer.probe.port | quote }}
+            {{- end }}
+            {{- end }}
             - name: RPC_RECONNECT_ATTEMPTS
               {{ if $val.consumer.rpcReconnectAttempts }}
               value: {{ $val.consumer.rpcReconnectAttempts | quote }}

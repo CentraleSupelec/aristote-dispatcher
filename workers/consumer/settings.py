@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     SERVICE_NAME: Optional[str] = Field(default=None)
     TARGET_PORT: int = Field(default=8080)
     USE_PROBES: int = Field(default=0)
+    PROBE_PORT: int = Field(default=8081)
     DEFAULT_LLM_URL: Optional[str] = Field(alias="LLM_URL", default=None)
 
     @property

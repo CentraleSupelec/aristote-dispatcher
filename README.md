@@ -81,8 +81,8 @@ The sender is the python block which reproduces the API and sends the message do
 
 The consumer is the Python block which pulls messages from the RabbitMQ queue and sends them to the inference server.
 
-| Name                          | Description                                                                                                   | Value                                          |
-|-------------------------------|---------------------------------------------------------------------------------------------------------------|------------------------------------------------|
+| Name                           | Description                                                                                                   | Value                                          |
+|--------------------------------|---------------------------------------------------------------------------------------------------------------|------------------------------------------------|
 | `consumer.image.repository`    | Repository for the image                                                                                      | `centralesupelec/aristote-dispatcher-consumer` |
 | `consumer.image.pullPolicy`    | Pull policy for the image                                                                                     | `IfNotPresent`                                 |
 | `consumer.image.tag`           | Tag for the image                                                                                             | `latest`                                       |
@@ -96,11 +96,10 @@ The consumer is the Python block which pulls messages from the RabbitMQ queue an
 | `consumer.tolerations`         | Tolerations for the container                                                                                 | `[]`                                           |
 | `consumer.affinty`             | Node affinity and pod afinity for the pod : used if you want to separate the cpu and the gpu part for example | `{}`                                           |
 | `consumer.nodeSelector`        | Node selector for the pod                                                                                     | `{}`                                           |
-| `consumer.rpcReconnectAttempts`| Number of attemps to reconnect to RPC before setting pod to unhealthy                                                                                     | `10`                                         |
-| `consumer.rpcQueueExpiration`| Number of milliseconds to wait before removing queue in RabbitMQ if consumer doesn't respond                                                                                     | `30000`                                         |
-| `consumer.useProbes`           | The pod uses routes to communicate its status to Kubernetes                                                                                      | `True`                                         |
-| `consumer.probePort`           | Port used for probes (if `useProbes` is set to `True`)                                                                                     | `8081`                                         |
-
+| `consumer.rpcReconnectAttempts`| Number of attemps to reconnect to RPC before setting pod to unhealthy                                         | `10`                                           |
+| `consumer.rpcQueueExpiration`  | Number of milliseconds to wait before removing queue in RabbitMQ if consumer doesn't respond                  | `30000`                                        |
+| `consumer.probe.enabled`       | The pod uses routes to communicate its status to Kubernetes                                                   | `true`                                         |
+| `consumer.probe.port`          | Port used for probes (if probes are enabled)                                                                  | `8081`                                         |
 
 
 ### Inference server

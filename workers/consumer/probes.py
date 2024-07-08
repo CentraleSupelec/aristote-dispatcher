@@ -1,7 +1,5 @@
 from aiohttp import web
-
-
-PROBES_PORT = 8081
+from settings import settings
 
 
 class Prober:
@@ -13,7 +11,7 @@ class Prober:
 
     async def setup(self):
         await self.runner.setup()
-        self.site = web.TCPSite(self.runner, "0.0.0.0", PROBES_PORT)
+        self.site = web.TCPSite(self.runner, "0.0.0.0", settings.PROBE_PORT)
         await self.site.start()
 
     async def cleanup(self):
