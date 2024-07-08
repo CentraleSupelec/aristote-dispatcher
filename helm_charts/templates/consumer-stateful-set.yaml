@@ -147,6 +147,12 @@ spec:
               {{ else }}
               value: "10"
               {{ end }}
+            - name: RPC_QUEUE_EXPIRATION
+              {{ if $val.consumer.rpcQueueExpiration }}
+              value: {{ $val.consumer.rpcQueueExpiration | quote }}
+              {{ else }}
+              value: "30000"
+              {{ end }}
             {{- if $val.rabbitmq.internal }}
             - name: RABBITMQ_HOST
               valueFrom:

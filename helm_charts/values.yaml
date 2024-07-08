@@ -62,6 +62,7 @@ consumer:
   replicaCount: 1
   logLevel: "20"
   rpcReconnectAttempts: 10
+  rpcQueueExpiration: 30000
   env: []
   annotations: {}
   podAnnotations: {}

@@ -44,7 +44,7 @@ class RPCServer:
                 durable=True,
                 arguments={
                     "x-expires": settings.RPC_QUEUE_EXPIRATION,
-                },  # the queue will be deleted when no consumer is connected to it for 60 seconds
+                },
             )
             self.consumer_tag = await self.queue.consume(
                 self.on_message_callback,
