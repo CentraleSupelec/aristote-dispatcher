@@ -34,18 +34,11 @@ List of all the models to deploy in the application. It can be multiple models.
 | `huggingface_token`    | Token used for pulling models from huggingface                        | `""`                                                    |
 | `replicaCount`         | Replica count for the model                                           | `1`                                                     |
 | `ropeScaling`          | Object representing RoPE scaling configuration to apply for the model | `{enabled: false, jsonConfiguration: "{}", theta: ""}`  |
+| `pvc.enabled`          | Store model in a PersistentVolumeClaim to allow vllm to restart without re-downloading the model    | `false`                                               |
+| `pvc.storageSize`      | Choose the size of the PVC (if enabled)                               | `"16Gi"`                                                |
 
 `jsonConfiguration` and `theta` parameters of the `ropeScaling` configuration correspond to `--rope-scaling` and
 `--rope-theta` arguments of the [VLLM engine](https://docs.vllm.ai/en/latest/models/engine_args.html).
-
-### PVC
-
-Allows vllm pods to restart without having to download models each time.
-The PVC is shared between all vllm instances.
-
-| Name                   | Description                                                           | Value                                                   |
-|------------------------|-----------------------------------------------------------------------|---------------------------------------------------------|
-| `storageSize`                | Size of PVC                 | `"64Gi"`                                                    |
 
 ### Tokens
 

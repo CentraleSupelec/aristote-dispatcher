@@ -1,6 +1,22 @@
 {{ $val := .Values }}
 {{ $file := . }}
 {{- range .Values.models }}
+{{- if .pvc.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ $file.Release.Name }}-model-storage-{{ .name }}
+  annotations:
+    "helm.sh/resource-policy": keep
+    "argocd.argoproj.io/hook": Skip
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .pvc.storageSize }}
+{{- end }}
+---
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -45,7 +61,7 @@ spec:
           - --model
           - {{ .model | quote }}
           - --download-dir
-          - "/models/{{ .model }}"
+          - "/model"
           {{- if not (eq .servedModelName "")}}
           - --served_model_name={{ .servedModelName }}
           {{- end }}
@@ -93,9 +109,11 @@ spec:
             {{- with $val.inferenceserver.env }}
             {{ toYaml . | nindent 12 }}
             {{- end }}
+          {{- if .pvc.enabled }}
           volumeMounts:
             - name: model-storage
-              mountPath: /models
+              mountPath: /model
+          {{- end }}
         - name: {{ .name }}-consumer
           securityContext:
             {{- toYaml $val.consumer.securityContext | nindent 12 }}
@@ -192,10 +210,12 @@ spec:
             {{- with $val.consumer.env }}
             {{ toYaml . | nindent 12 }}
             {{- end }}
+      {{- if .pvc.enabled }}
       volumes:
         - name: model-storage
           persistentVolumeClaim:
-            claimName: {{ $file.Release.Name }}-model-storage
+            claimName: {{ $file.Release.Name }}-model-storage-{{ .name }}
+      {{- end }}
       {{- with $val.consumer.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

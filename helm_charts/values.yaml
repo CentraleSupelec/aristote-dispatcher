@@ -11,9 +11,9 @@ models:
       jsonConfiguration: '{"type":"dynamic","factor":4.0}'
       theta: "500000"
     replicaCount: 1
-
-pvc:
-  storageSize: "64Gi"
+    pvc:
+      enabled: false
+      storageSize: "16Gi"
 
 tokens: # Lowest priority is more important
   - token: token
