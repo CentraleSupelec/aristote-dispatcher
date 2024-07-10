@@ -1,5 +1,5 @@
 models:
-  - name: name #must be lowercase
+  - name: name
     model: ""
     servedModelName: ""
     quantization: ""
@@ -15,7 +15,7 @@ models:
       enabled: false
       storageSize: "16Gi"
 
-tokens: # Lowest priority is more important
+tokens:
   - token: token
     priority: 1
     threshold: 10
@@ -90,6 +90,7 @@ inferenceserver:
   env: []
   podAnnotations: {}
   podSecurityContext: {}
+  monitoring: False
 
 rabbitmq:
   internal: True
