@@ -156,7 +156,7 @@ async def proxy(request: Request, call_next):
     except ChannelClosed as e:
         # the queue may have been deleted (ex: consumer does not exist anymore)
         logging.debug(
-            f"Queue {requested_model} seems to not exist anymore, refreshing models"
+            f"Queue {requested_model} seems to not be existing anymore. Refreshing models..."
         )
         asyncio.create_task(get_models(settings))
         return JSONResponse(
