@@ -1,6 +1,6 @@
 {{ $file := . }}
-{{- if hasKey .Values.rabbitmq "monitoring" }}
-  {{- if .Values.rabbitmq.monitoring }}
+{{- if hasKey .Values.inferenceserver "monitoring" }}
+  {{- if .Values.inferenceserver.monitoring }}
 apiVersion: monitoring.coreos.com/v1
 kind: PodMonitor
 metadata:
