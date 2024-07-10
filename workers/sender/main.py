@@ -175,7 +175,7 @@ async def proxy(request: Request, call_next):
             case _:
                 return JSONResponse(content=response_content, status_code=503)
 
-    logging.info("rpc response received")
+    logging.info("RPC response received")
 
     llm_url = rpc_response.body.decode()
     logging.info(f"LLM Url received : {llm_url}")
@@ -185,20 +185,18 @@ async def proxy(request: Request, call_next):
         method=request.method, url=request.url.path, content=body
     )
 
-    logging.info(
-        f"request: \nmethod: {request.method}\nurl: {request.url.path}\ncontent: {body}"
-    )
-    logging.info("async proxy request created")
+    logging.info(f"Request ( Method: {request.method} ; URL: {request.url.path} )")
+    logging.debug(f" > Request content: {body}")
 
     try:
         res = await http_client.send(req, stream=True)
-        logging.info("async proxy request send")
+        logging.info("Proxy request sent")
         background_tasks = BackgroundTasks(
             [
                 BackgroundTask(res.aclose),
                 BackgroundTask(http_client.aclose),
                 BackgroundTask(
-                    logging.info, f"Fin de la requête lancée à {start_hour}"
+                    logging.info, f"Finished request started at {start_hour}"
                 ),
             ]
         )

@@ -8,7 +8,6 @@ metadata:
   name: {{ $file.Release.Name }}-model-storage-{{ .name }}
   annotations:
     "helm.sh/resource-policy": keep
-    "argocd.argoproj.io/hook": Skip
 spec:
   accessModes:
     - ReadWriteOnce
