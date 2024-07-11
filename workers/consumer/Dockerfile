@@ -1,10 +1,18 @@
-FROM python:3.12.3-alpine
+FROM python:3.12.4-alpine
 
+
+RUN pip install --upgrade pip
+
+RUN adduser --system consumer
+USER consumer
 WORKDIR /app
 
-COPY requirements.txt requirements.txt
+COPY --chown=consumer:consumer requirements.txt requirements.txt
 RUN pip install -r requirements.txt
 
-COPY . .
+ENV PATH="/home/consumer/.local/bin:${PATH}"
+
+COPY --chown=consumer:consumer . .
+
 
 CMD ["python3", "main.py"]
