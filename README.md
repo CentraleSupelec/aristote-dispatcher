@@ -10,9 +10,9 @@ This project originates in the need to optimize the use of GPUs by providing a w
 
 There are several possible architectures, but two fundamental criteria made us choose this one:
 - Open AI standards must be respected, so that the system is completely transparent to the customer.
-- No need to re-implement the Open AI API by hand, and no need to maintain it. The LLM has to respond to errors, and all we do is transfer them.
+- We don't want to re-implement the Open AI API by hand and to maintain it. The LLM has to respond to errors, and all we do is forward them.
 
-To respect this requirements, we divided the the project into three main components:
+To respect this requirements, we divided the project into three main components:
 - The sender exposes an API to send tasks to the queue. It is responsible for checking the token and sending the task to the right queue (one queue per model), with the right priority.
 - A RabbitMQ server is responsible for managing queues and the prioritization of the tasks.
 - The consumer keeps track of the use of the model and pulls the tasks off the model queue when ready.

@@ -1,0 +1,20 @@
+site_name: Aristote Distpatcher
+site_url: https://centralesupelec.github.io/aristote-dispatcher/
+site_description: Déploiement de LLM à grande échelle
+site_author: CentraleSupélec
+
+repo_name: CentraleSupelec/Aristote-Dispatcher
+repo_url: https://github.com/squidfunk/mkdocs-material
+
+theme:
+  name: material
+  palette:
+    primary: custom
+    accent: custom
+  logo: assets/logo.svg
+  favicon: assets/favicon.ico
+extra_css:
+  - stylesheets/extra.css
+
+nav:
+  - "Présentation": "index.md"
