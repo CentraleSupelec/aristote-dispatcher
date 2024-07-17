@@ -38,18 +38,15 @@ Let's dive into the steps shown above:
 
 In this section, we detail all the environment variables you can set to configure the sender and the consumer, the required and optional ones and their default value. You can configure these variables using Helm Chart (more information in the `README.md` at the root of this repository).
 
-## Prerequisites
+### Prerequisites
 
 - [GPU Operator](https://docs.nvidia.com/datacenter/cloud-native/gpu-operator/latest/getting-started.html) from Nvidia should be installed in order to access the GPUs
 - [RabbitMQ Operator](https://www.rabbitmq.com/kubernetes/operator/install-operator) should be installed if using the internal RabbitMQ cluster (values for the cluster are in rabbitmq-cluster.yaml)
 - [ingress-nginx](https://docs.nginx.com/nginx-ingress-controller/installation/) for the ingress
+- [Prometheus Operator](https://github.com/prometheus-operator/kube-prometheus) for RabbitMQ and vLLM monitoring (optional)
 
 External chart : 
 - MySQL/PostgreSQL chart to have a database for identification tokens
-
-## Values
-
-Description of all parameters override.
 
 ### Models
 
@@ -147,6 +144,7 @@ The inference server is using the GPU for infering on the LLM. We are using the 
 | `inferenceserver.env`              | Environment variables to add to the container                 | `[]`               |
 | `inferenceserver.monitoring`       | Monitor vLLM using Prometheus                                 | `False`            |
 
+[Useful Grafana Dashboard](https://github.com/jasonacox/TinyLLM/tree/main/monitoring) to use if monitoring is enabled.
 
 ### RabbitMQ
 
@@ -159,6 +157,8 @@ RabbitMQ is used as a priority the queue system as well as an intermediary betwe
 | `rabbitmq.auth.password` | Password for RabbitMQ (if external)                          | `""`   |
 | `rabbitmq.host`          | Host for external RabbitMQ cluster                           | `""`   |
 | `rabbitmq.monitoring`    | Monitor RabbitMQ using Prometheus (if internal)              | `False`|
+
+[Useful Grafana dashboard](https://grafana.com/grafana/dashboards/10991-rabbitmq-overview/) to use if monitoring is enabled.
 
 ### Database
 
@@ -175,6 +175,26 @@ Database used by the sender to store authentication tokens.
 | `database.host`                   | Host for the database (if external)    | `""`                  |
 | `database.initdbScriptsConfigMap` | init script for database (if internal) | `database-config-map` |
 
+Note that, is the database is external, you will have to initialize it and populate it with your tokens by hand.
+
+#### Initialization
+
+mysql:
+```sql
+CREATE TABLE users (id INT NOT NULL AUTO_INCREMENT PRIMARY KEY, token VARCHAR(255), priority INT NOT NULL, threshold INT NOT NULL, client_type ENUM('chat'));
+```
+
+postgresql:
+```sql
+CREATE TYPE client_type as ENUM ('chat');
+CREATE TABLE users (id SERIAL PRIMARY KEY, token VARCHAR(255), priority INT NOT NULL, threshold INT NOT NULL, client_type client_type);
+```
+
+#### Insertion
+
+```sql
+INSERT INTO users (token, priority, threshold, client_type) VALUES ('token', priority, threshold, 'client-type');
+```
 
 ### Ingress
 
