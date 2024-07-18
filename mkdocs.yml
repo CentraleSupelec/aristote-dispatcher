@@ -4,7 +4,7 @@ site_description: Déploiement de LLM à grande échelle
 site_author: CentraleSupélec
 
 repo_name: CentraleSupelec/Aristote-Dispatcher
-repo_url: https://github.com/squidfunk/mkdocs-material
+repo_url: https://github.com/centralesupelec/aristote-dispatcher
 
 theme:
   name: material
@@ -16,5 +16,10 @@ theme:
 extra_css:
   - stylesheets/extra.css
 
+markdown_extensions:
+  - attr_list
+  - md_in_html
+
 nav:
   - "Présentation": "index.md"
+  - "Troubleshooting": "troubleshooting.md"
