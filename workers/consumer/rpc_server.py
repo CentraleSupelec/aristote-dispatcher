@@ -58,17 +58,19 @@ class RPCServer:
             logging.info("Consumer connected to RabbitMQ")
 
     async def close(self) -> None:
+        logging.debug("Closing RPC connection...")
         if await self.check_connection():
             try:
                 await self.connection.close()
             except Exception as e:
-                logging.error(f"Could not close connection: {e}")
+                logging.error(f"Could not close RPC connection: {e}")
             else:
                 self.connection = None
                 self.channel = None
+                logging.info("RPC disconnected")
 
     async def on_message_callback(self, message: AbstractIncomingMessage):
-        logging.info(f"Message consumed on queue {MODEL}")
+        logging.debug(f"Message consumed on queue {MODEL}")
 
         current_avg_token, current_nb_users = await try_update_metrics()
 
@@ -100,7 +102,7 @@ class RPCServer:
         return False
 
     async def reconnect(self):
-        logging.info("Attempting to reconnect RPC client...")
+        logging.debug("Attempting to reconnect to RPC client...")
         try:
             await self.connect()
             logging.info("RPC client reconnected successfully")
@@ -114,11 +116,12 @@ class RPCServer:
             try:
                 await self.reconnect()
             except Exception:
+                logging.info(f"Attempt {i+1}/{RPC_RECONNECT_ATTEMPTS} to reconnect RPC client failed")
                 await asyncio.sleep(i)
             else:
                 break
         else:
-            raise Exception("Failed to reconnect RPC client")
+            raise Exception(f"Failed to reconnect to RPC client after {RPC_RECONNECT_ATTEMPTS} attempts")
 
 
 rpc_server = RPCServer(url=RABBITMQ_URL)

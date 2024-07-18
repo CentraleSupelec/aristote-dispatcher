@@ -1,11 +1,19 @@
-FROM python:3.12.3-alpine
+FROM python:3.12.4-alpine
 
+
+RUN pip install --upgrade pip
+
+RUN adduser --system sender
+USER sender
 WORKDIR /app
 
-COPY requirements.txt requirements.txt
+COPY --chown=sender:sender requirements.txt requirements.txt
 RUN pip install -r requirements.txt
 
-COPY . .
+ENV PATH="/home/sender/.local/bin:${PATH}"
+
+COPY --chown=sender:sender . .
+
 
 EXPOSE 8080
 

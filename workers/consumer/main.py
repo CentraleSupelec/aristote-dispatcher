@@ -21,9 +21,11 @@ async def main_consumer():
     # of the RPCServer class
     await shutdown_signal.wait()
 
-    logging.debug("Closing RPC connection...")
     await rpc_server.close()
-    logging.info("RPC disconnected")
+
+def shutdown():
+    logging.info("Shutting down consumer...")
+    shutdown_signal.set()
 
 
 if __name__ == "__main__":
@@ -31,10 +33,6 @@ if __name__ == "__main__":
 
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
-
-    def shutdown():
-        logging.info("Shutting down consumer...")
-        shutdown_signal.set()
 
     for sig in (signal.SIGINT, signal.SIGTERM):
         loop.add_signal_handler(sig, shutdown)

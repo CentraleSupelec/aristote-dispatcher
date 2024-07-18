@@ -4,8 +4,8 @@ description: |
   A Helm chart for deploying a vLLM inference server at a large scale
 
 type: application
-version: 0.0.1
-appVersion: "v0.0.1"
+version: 1.0.0
+appVersion: "v1.0.0"
 
 dependencies:
   - name: mysql

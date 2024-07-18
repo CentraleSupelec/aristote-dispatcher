@@ -1,4 +1,6 @@
 {{ $file := . }}
+{{- if hasKey .Values.inferenceserver "monitoring" }}
+  {{- if .Values.inferenceserver.monitoring }}
 apiVersion: monitoring.coreos.com/v1
 kind: PodMonitor
 metadata:
@@ -12,3 +14,5 @@ spec:
   namespaceSelector:
     matchNames:
       - {{ .Release.Namespace | quote }}
+  {{- end }}
+{{- end }}
