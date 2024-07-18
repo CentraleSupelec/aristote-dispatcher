@@ -19,7 +19,7 @@ To respect this requirements, we divided the project into three main components:
 
 To improve performances, instead of having the consumer sending tasks to the LLM, it sends back to the sender an authorization to access the LLM directly. This way, the consumer can keep track of the use of the LLM and the sender can send the task directly to the LLM and act as a proxy for the consumer.
 
-![Architecture](./architecture.webp)
+![Architecture](docs/assets/architecture.webp)
 
 Let's dive into the steps shown above:
 
