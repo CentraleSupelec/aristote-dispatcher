@@ -11,7 +11,7 @@ Aristote Dispatcher permet :
 - la priorisation des tâches importantes.
 
 En bref, avec Aristote Dispatcher :
-- vous garantissez que vos GPUs sont avant tout utiliés pour leurs tâches principales
+- vous garantissez que vos GPUs sont avant tout utilisés pour leurs tâches principales
 - vous leur permettez de travailler sur des tâches secondaires,
 - vous assurez à l'utilisateur une API transparente suivant les standards Open AI.
 
