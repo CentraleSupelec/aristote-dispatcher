@@ -64,6 +64,7 @@ consumer:
   logLevel: "20"
   rpcReconnectAttempts: 10
   rpcQueueExpiration: 30000
+  maxVLLMConnectionAttempts: 100
   env: []
   annotations: {}
   podAnnotations: {}

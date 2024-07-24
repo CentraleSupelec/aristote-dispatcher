@@ -216,6 +216,8 @@ spec:
               value: {{ $val.consumer.logLevel | quote }}
             - name: MODEL
               value: {{ .model | quote }}
+            - name: MAX_VLLM_CONNECTION_ATTEMPTS
+              value: {{ $val.consumer.maxVLLMConnectionAttempts | quote }}
             {{- with $val.consumer.env }}
             {{ toYaml . | nindent 12 }}
             {{- end }}

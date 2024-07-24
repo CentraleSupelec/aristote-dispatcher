@@ -125,6 +125,7 @@ The consumer is the Python block which pulls messages from the RabbitMQ queue an
 | `consumer.nodeSelector`        | Node selector for the pod                                                                     | `{}`                                           |
 | `consumer.rpcReconnectAttempts`| Number of attemps to reconnect to RPC channel before setting pod to unhealthy                 | `10`                                           |
 | `consumer.rpcQueueExpiration`  | Number of milliseconds to wait before removing queue in RabbitMQ if consumer doesn't respond  | `30000`                                        |
+| `consumer.maxVLLMConnectionAttempts`| Number of attemps to connect to vLLM before setting pod to unhealthy                     | `100`                                           |
 | `consumer.probe.enabled`       | The pod uses routes to communicate its status to Kubernetes                                   | `true`                                         |
 | `consumer.probe.port`          | Port used for probes (if probes are enabled)                                                  | `8081`                                         |
 
