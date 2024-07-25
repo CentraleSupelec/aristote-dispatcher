@@ -201,6 +201,12 @@ INSERT INTO users (token, priority, threshold, client_type) VALUES ('token', pri
 
 [Nginx ingress template](https://github.com/kubernetes/ingress-nginx/blob/main/charts/ingress-nginx/values.yaml).
 
+## Monitoring
+
+Aristote Dispatcher is designed to be monitored using Prometheus. Provided that monitoring is enabled (see section above), you can use Grafana to track cluster metrics and configure alerts.
+
+Everything related to Grafana is stored inside `grafana`. You will find various dashboards and alerts as JSON.
+
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
