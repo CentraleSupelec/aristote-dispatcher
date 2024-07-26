@@ -123,13 +123,20 @@ spec:
             - name: http
               containerPort: {{ $val.consumer.probePort }}
               protocol: TCP
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: {{ $val.consumer.probePort }}
+            initialDelaySeconds: 10
+            periodSeconds: 20
+            failureThreshold: {{ $val.consumer.rpcReconnectAttempts }}
           livenessProbe:
             httpGet:
               path: /health
               port: {{ $val.consumer.probePort }}
-            initialDelaySeconds: 2
-            periodSeconds: 30
-            failureThreshold: 5
+            initialDelaySeconds: 10
+            periodSeconds: 20
+            failureThreshold: 3
           {{ else }}
           livenessProbe:
             exec:
