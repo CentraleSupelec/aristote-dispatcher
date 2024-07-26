@@ -1,7 +1,7 @@
 import logging
 import asyncio
 import uuid
-from aio_pika import connect, Message, DeliveryMode
+from aio_pika import connect_robust, Message, DeliveryMode
 from aio_pika.abc import AbstractChannel, AbstractConnection, AbstractQueue, AbstractIncomingMessage
 from typing import MutableMapping
 from settings import Settings
@@ -16,19 +16,27 @@ class RPCClient:
         self.callback_queue: AbstractQueue = None
         self.consumer_tag = None
 
-    async def connect(self) -> None:
+    async def first_connect(self) -> None:
         logging.debug("Connecting consumer to RabbitMQ...")
         try:
-            self.connection = await connect(url=self.settings.RABBITMQ_URL)
+            self.connection = await connect_robust(url=self.settings.RABBITMQ_URL)
+            self.connection.reconnect_callbacks.add(self.reconnect_callback)
             self.channel = await self.connection.channel()
             self.callback_queue = await self.channel.declare_queue(exclusive=True)
             self.consumer_tag = await self.callback_queue.consume(self.on_response, no_ack=True)
-            self.connection.close_callbacks.add(self.try_reconnect)
         except Exception as e:
             logging.error(f"Error connecting to RabbitMQ: {e}")
             raise
         else:
             logging.info("Sender connected to RabbitMQ")
+
+    async def reconnect_callback(self, connection: AbstractConnection) -> None:
+        logging.info("Reconnecting to RabbitMQ...")
+        self.connection = connection
+        self.channel = await connection.channel()
+        self.callback_queue = await self.channel.declare_queue(exclusive=True)
+        self.consumer_tag = await self.callback_queue.consume(self.on_response, no_ack=True)
+        logging.info("Reconnected to RabbitMQ")
 
     async def close(self) -> None:
         logging.debug("Closing RPC Connection...")
@@ -80,28 +88,6 @@ class RPCClient:
         response: AbstractIncomingMessage = await future
         logging.info(f"Received URL for model {model}")
         return response
-    
-    async def reconnect(self):
-        logging.debug("Attempting to reconnect to RPC client...")
-        try:
-            await self.connect()
-            logging.info("RPC client reconnected successfully")
-        except Exception as e:
-            logging.error(f"Error while reconnecting RPC client: {e}")
-            raise
-
-    async def try_reconnect(self, *args, **kwargs):
-        RPC_RECONNECT_ATTEMPTS = self.settings.RPC_RECONNECT_ATTEMPTS
-        for i in range(RPC_RECONNECT_ATTEMPTS):
-            try:
-                await self.reconnect()
-            except Exception:
-                logging.info(f"Attempt {i+1}/{RPC_RECONNECT_ATTEMPTS} to reconnect RPC client failed")
-                await asyncio.sleep(i)
-            else:
-                break
-        else:
-            raise Exception(f"Failed to reconnect to RPC client after {RPC_RECONNECT_ATTEMPTS} attempts")
         
     async def check_connection(self):
         if self.connection and self.channel:

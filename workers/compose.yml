@@ -63,3 +63,23 @@ services:
     restart: on-failure
     depends_on:
       - rabbitmq
+
+  vllm:
+    image: vllm/vllm-openai
+    ports:
+      - 50000:8000
+    entrypoint:
+      - python3
+      - -m
+      - vllm.entrypoints.openai.api_server
+      # - --model
+      # - "model"
+      # - --quantization=quantization
+      # - --dtype=dtype
+      # - --gpu-memory-utilization=.gpuMemoryUtilization
+      # - --rope-scaling=rope_scaling_json
+      # - --rope-theta=rope_scaling_theta
+      - --trust-remote-code
+    environment:
+      # - HF_TOKEN=token
+      - PORT=8000

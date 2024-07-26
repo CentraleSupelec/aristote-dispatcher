@@ -1,0 +1,263 @@
+{
+    "apiVersion": 1,
+    "groups": [
+        {
+            "orgId": 1,
+            "name": "Aristote Dispatcher",
+            "folder": "Aristote Dispatcher",
+            "interval": "5m",
+            "rules": [
+                {
+                    "uid": "bds4ebv2wuolca",
+                    "title": "VLLM Time to first token",
+                    "condition": "B",
+                    "data": [
+                        {
+                            "refId": "A",
+                            "relativeTimeRange": {
+                                "from": 600,
+                                "to": 0
+                            },
+                            "datasourceUid": "prometheus",
+                            "model": {
+                                "disableTextWrap": false,
+                                "editorMode": "builder",
+                                "expr": "sum by(model_name) (rate(vllm:time_to_first_token_seconds_bucket[$__rate_interval]))",
+                                "fullMetaSearch": false,
+                                "includeNullMetadata": true,
+                                "instant": true,
+                                "intervalMs": 1000,
+                                "legendFormat": "__auto",
+                                "maxDataPoints": 43200,
+                                "range": false,
+                                "refId": "A",
+                                "useBackend": false
+                            }
+                        },
+                        {
+                            "refId": "B",
+                            "relativeTimeRange": {
+                                "from": 600,
+                                "to": 0
+                            },
+                            "datasourceUid": "__expr__",
+                            "model": {
+                                "conditions": [
+                                    {
+                                        "evaluator": {
+                                            "params": [
+                                                10,
+                                                0
+                                            ],
+                                            "type": "gt"
+                                        },
+                                        "operator": {
+                                            "type": "and"
+                                        },
+                                        "query": {
+                                            "params": []
+                                        },
+                                        "reducer": {
+                                            "params": [],
+                                            "type": "avg"
+                                        },
+                                        "type": "query"
+                                    }
+                                ],
+                                "datasource": {
+                                    "name": "Expression",
+                                    "type": "__expr__",
+                                    "uid": "__expr__"
+                                },
+                                "expression": "A",
+                                "intervalMs": 1000,
+                                "maxDataPoints": 43200,
+                                "refId": "B",
+                                "type": "threshold"
+                            }
+                        }
+                    ],
+                    "dasboardUid": "b281712d-8bff-41ef-9f3f-71ad43c05e9b",
+                    "panelId": 5,
+                    "noDataState": "NoData",
+                    "execErrState": "Error",
+                    "for": "5m",
+                    "annotations": {
+                        "__dashboardUid__": "b281712d-8bff-41ef-9f3f-71ad43c05e9b",
+                        "__panelId__": "5",
+                        "summary": "The model {{ index $labels  \"model_name\" }} has a high time to first token"
+                    },
+                    "labels": {},
+                    "isPaused": false,
+                    "notification_settings": {
+                        "receiver": "grafana-default-email"
+                    }
+                },
+                {
+                    "uid": "fds4j9hqojhmof",
+                    "title": "Kubernetes pods monitoring",
+                    "condition": "C",
+                    "data": [
+                        {
+                            "refId": "A",
+                            "relativeTimeRange": {
+                                "from": 600,
+                                "to": 0
+                            },
+                            "datasourceUid": "prometheus",
+                            "model": {
+                                "disableTextWrap": false,
+                                "editorMode": "code",
+                                "expr": "rate(kube_pod_container_status_restarts_total{job=\"kube-state-metrics\", namespace=~\"aristote-dispatcher.*\"}[5m])",
+                                "fullMetaSearch": false,
+                                "includeNullMetadata": true,
+                                "instant": true,
+                                "interval": "",
+                                "intervalMs": 1000,
+                                "legendFormat": "__auto",
+                                "maxDataPoints": 43200,
+                                "range": false,
+                                "refId": "A",
+                                "useBackend": false
+                            }
+                        },
+                        {
+                            "refId": "C",
+                            "relativeTimeRange": {
+                                "from": 600,
+                                "to": 0
+                            },
+                            "datasourceUid": "__expr__",
+                            "model": {
+                                "conditions": [
+                                    {
+                                        "evaluator": {
+                                            "params": [
+                                                1
+                                            ],
+                                            "type": "gt"
+                                        },
+                                        "operator": {
+                                            "type": "and"
+                                        },
+                                        "query": {
+                                            "params": [
+                                                "C"
+                                            ]
+                                        },
+                                        "reducer": {
+                                            "params": [],
+                                            "type": "last"
+                                        },
+                                        "type": "query"
+                                    }
+                                ],
+                                "datasource": {
+                                    "type": "__expr__",
+                                    "uid": "__expr__"
+                                },
+                                "expression": "A",
+                                "intervalMs": 1000,
+                                "maxDataPoints": 43200,
+                                "refId": "C",
+                                "type": "threshold"
+                            }
+                        }
+                    ],
+                    "noDataState": "NoData",
+                    "execErrState": "Error",
+                    "for": "5m",
+                    "annotations": {},
+                    "labels": {},
+                    "isPaused": false,
+                    "notification_settings": {
+                        "receiver": "grafana-default-email"
+                    }
+                },
+                {
+                    "uid": "ddsem6j9e6kn4c",
+                    "title": "rabbitmq queues",
+                    "condition": "B",
+                    "data": [
+                        {
+                            "refId": "A",
+                            "relativeTimeRange": {
+                                "from": 600,
+                                "to": 0
+                            },
+                            "datasourceUid": "prometheus",
+                            "model": {
+                                "disableTextWrap": false,
+                                "editorMode": "builder",
+                                "expr": "sum by(job) (rate(rabbitmq_queues[$__rate_interval]))",
+                                "fullMetaSearch": false,
+                                "includeNullMetadata": true,
+                                "instant": true,
+                                "intervalMs": 1000,
+                                "legendFormat": "__auto",
+                                "maxDataPoints": 43200,
+                                "range": false,
+                                "refId": "A",
+                                "useBackend": false
+                            }
+                        },
+                        {
+                            "refId": "B",
+                            "relativeTimeRange": {
+                                "from": 0,
+                                "to": 0
+                            },
+                            "datasourceUid": "__expr__",
+                            "model": {
+                                "conditions": [
+                                    {
+                                        "evaluator": {
+                                            "params": [
+                                                0,
+                                                0
+                                            ],
+                                            "type": "gt"
+                                        },
+                                        "operator": {
+                                            "type": "and"
+                                        },
+                                        "query": {
+                                            "params": []
+                                        },
+                                        "reducer": {
+                                            "params": [],
+                                            "type": "avg"
+                                        },
+                                        "type": "query"
+                                    }
+                                ],
+                                "datasource": {
+                                    "name": "Expression",
+                                    "type": "__expr__",
+                                    "uid": "__expr__"
+                                },
+                                "expression": "$A \u003c 0",
+                                "hide": false,
+                                "intervalMs": 1000,
+                                "maxDataPoints": 43200,
+                                "refId": "B",
+                                "type": "math"
+                            }
+                        }
+                    ],
+                    "noDataState": "NoData",
+                    "execErrState": "Error",
+                    "for": "5m",
+                    "annotations": {
+                        "summary": "{{ index $labels \"job\" }} has lost a queue"
+                    },
+                    "labels": {},
+                    "isPaused": false,
+                    "notification_settings": {
+                        "receiver": "grafana-default-email"
+                    }
+                }
+            ]
+        }
+    ]
+}
