@@ -1,6 +1,6 @@
 # Helm chart for large scale LLM
 
-Deployement of LLM at a large scale using VLL server for inference.
+Deployment of LLM at a large scale using VLL server for inference.
 
 ## Introduction
 
@@ -12,7 +12,7 @@ There are several possible architectures, but two fundamental criteria made us c
 - Open AI standards must be respected, so that the system is completely transparent to the customer.
 - We don't want to re-implement the Open AI API by hand and to maintain it. The LLM has to respond to errors, and all we do is forward them.
 
-To respect this requirements, we divided the project into three main components:
+To respect these requirements, we divided the project into three main components:
 - The sender exposes an API to send tasks to the queue. It is responsible for checking the token and sending the task to the right queue (one queue per model), with the right priority.
 - A RabbitMQ server is responsible for managing queues and the prioritization of the tasks.
 - The consumer keeps track of the use of the model and pulls the tasks off the model queue when ready.
@@ -30,7 +30,7 @@ Let's dive into the steps shown above:
 3. If accepted, the request will be pushed into the right queue with its priority. The API makes a RPC call and wait for a response in a callback queue which will specify the LLM address available to handle the request.
 4. There's a consumer for each LLM on each GPU. At its startup, it declares a queue corresponding to its model and consumes messages from it.
 5. Before consuming each message, it checks the average throughput of token per user of the LLM and consume it only if it is greater than a certain value to ensure a pleasant use.
-6. It then confirms to the API that the LLM can handle the request and send in the confirmation message the LLM's address.
+6. It then confirms to the API that the LLM can handle the request, including the LLM's address in the confirmation message.
 7. The API has forwarded the request directly to the LLM.
 8. The sender finally sends a response to the user.
 
@@ -132,7 +132,7 @@ The consumer is the Python block which pulls messages from the RabbitMQ queue an
 
 ### Inference server
 
-The inference server is using the GPU for infering on the LLM. We are using the vLLM inference server.
+The inference server is using the GPU for inferring on the LLM. We are using the vLLM inference server.
 
 | Name                               | Description                                                   | Value              |
 |------------------------------------|---------------------------------------------------------------|--------------------|
@@ -149,7 +149,7 @@ The inference server is using the GPU for infering on the LLM. We are using the 
 
 ### RabbitMQ
 
-RabbitMQ is used as a priority the queue system as well as an intermediary between sender and consumer. We are using the RabbitMQ cluster operator to create the cluster. The file is ```rabbitmq.yaml```. It is also compatible with an external RabbitMQ cluster.
+RabbitMQ is used as a priority in the queue system as well as an intermediary between sender and consumer. We are using the RabbitMQ cluster operator to create the cluster. The file is ```rabbitmq.yaml```. It is also compatible with an external RabbitMQ cluster.
 
 | Name                     | Description                                                  | Value  |
 |--------------------------|--------------------------------------------------------------|--------|
@@ -176,7 +176,7 @@ Database used by the sender to store authentication tokens.
 | `database.host`                   | Host for the database (if external)    | `""`                  |
 | `database.initdbScriptsConfigMap` | init script for database (if internal) | `database-config-map` |
 
-Note that, is the database is external, you will have to initialize it and populate it with your tokens by hand.
+Note that, if the database is external, you will have to initialize it and populate it with your tokens by hand.
 
 #### Initialization
 
