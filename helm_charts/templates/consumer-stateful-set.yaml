@@ -123,13 +123,20 @@ spec:
             - name: http
               containerPort: {{ $val.consumer.probePort }}
               protocol: TCP
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: {{ $val.consumer.probePort }}
+            initialDelaySeconds: 10
+            periodSeconds: 20
+            failureThreshold: {{ $val.consumer.rpcReconnectAttempts }}
           livenessProbe:
             httpGet:
               path: /health
               port: {{ $val.consumer.probePort }}
-            initialDelaySeconds: 2
-            periodSeconds: 30
-            failureThreshold: 5
+            initialDelaySeconds: 10
+            periodSeconds: 20
+            failureThreshold: 3
           {{ else }}
           livenessProbe:
             exec:
@@ -216,6 +223,8 @@ spec:
               value: {{ $val.consumer.logLevel | quote }}
             - name: MODEL
               value: {{ .model | quote }}
+            - name: MAX_VLLM_CONNECTION_ATTEMPTS
+              value: {{ $val.consumer.maxVLLMConnectionAttempts | quote }}
             {{- with $val.consumer.env }}
             {{ toYaml . | nindent 12 }}
             {{- end }}

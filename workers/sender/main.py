@@ -35,7 +35,7 @@ async def lifespan(app: FastAPI):
     logging.info("Opening RPC connection")
     global rpc_client
     rpc_client = RPCClient(settings=settings)
-    await rpc_client.connect()
+    await rpc_client.first_connect()
     logging.info("RPC connection opened")
 
     yield

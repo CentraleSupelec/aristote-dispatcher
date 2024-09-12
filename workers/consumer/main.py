@@ -14,7 +14,7 @@ shutdown_signal = asyncio.Event()
 async def main_consumer():
     await wait_for_vllm()
 
-    await rpc_server.connect()
+    await rpc_server.first_connect()
 
     # Consumer is running until shutdown signal is received
     # Until then, all action occurs in the on_message_callback
