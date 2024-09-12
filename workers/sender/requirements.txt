@@ -1,5 +1,6 @@
 aio_pika
 fastapi
+fastapi[standard]
 asyncpg
 requests
 aiomysql
