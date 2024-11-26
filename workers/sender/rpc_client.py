@@ -17,7 +17,7 @@ class RPCClient:
         self.consumer_tag = None
 
     async def first_connect(self) -> None:
-        logging.debug("Connecting consumer to RabbitMQ...")
+        logging.debug("Connecting sender to RabbitMQ...")
         try:
             self.connection = await connect_robust(url=self.settings.RABBITMQ_URL)
             self.connection.reconnect_callbacks.add(self.reconnect_callback)
