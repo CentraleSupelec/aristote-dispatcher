@@ -24,7 +24,6 @@ async def update_metrics():
         response.raise_for_status()
 
     content = response.text
-
     line_pattern = r"^vllm:avg_generation_throughput_toks_per_s.*$"
     num_requests_running = r"^vllm:num_requests_running.*$"
 

@@ -1,4 +1,5 @@
 import asyncio
+import json
 import logging
 
 from aio_pika import connect_robust, Message, DeliveryMode
@@ -15,6 +16,7 @@ from settings import settings
 # === Set constants ===
 
 LLM_URL = settings.LLM_URL
+LLM_TOKEN = settings.LLM_TOKEN
 MODEL = settings.MODEL
 
 RABBITMQ_URL = settings.RABBITMQ_URL
@@ -99,10 +101,15 @@ class RPCServer:
             await asyncio.sleep(WAIT_FOR_LLM_DELAY)
             current_avg_token, current_nb_users = await try_update_metrics()
 
+        llm_params = {
+            'llmUrl': LLM_URL,
+            'llmToken': LLM_TOKEN
+        }
+        
         try:
             await self.channel.default_exchange.publish(
                 Message(
-                    body=LLM_URL.encode(),
+                    body=json.dumps(llm_params).encode(),
                     delivery_mode=DeliveryMode.PERSISTENT,
                     correlation_id=str(message.correlation_id),
                 ),
