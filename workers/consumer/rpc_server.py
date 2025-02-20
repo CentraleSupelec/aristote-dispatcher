@@ -23,6 +23,7 @@ RABBITMQ_URL = settings.RABBITMQ_URL
 
 AVG_TOKEN_THRESHOLD = settings.AVG_TOKEN_THRESHOLD
 NB_USER_THRESHOLD = settings.NB_USER_THRESHOLD
+NB_REQUESTS_IN_QUEUE_THRESHOLD = settings.NB_REQUESTS_IN_QUEUE_THRESHOLD
 
 RPC_RECONNECT_ATTEMPTS = settings.RPC_RECONNECT_ATTEMPTS
 WAIT_FOR_LLM_DELAY = 1
@@ -92,14 +93,17 @@ class RPCServer:
     async def on_message_callback(self, message: AbstractIncomingMessage):
         logging.debug(f"Message consumed on queue {MODEL}")
 
-        current_avg_token, current_nb_users = await try_update_metrics()
+        current_avg_token, current_nb_users, current_nb_requests_in_queue = await try_update_metrics()
 
         while (
-            current_avg_token < AVG_TOKEN_THRESHOLD
-            and current_nb_users > NB_USER_THRESHOLD
+            current_nb_requests_in_queue > NB_REQUESTS_IN_QUEUE_THRESHOLD
+            or (
+                current_avg_token < AVG_TOKEN_THRESHOLD
+                and current_nb_users > NB_USER_THRESHOLD
+            )
         ):
             await asyncio.sleep(WAIT_FOR_LLM_DELAY)
-            current_avg_token, current_nb_users = await try_update_metrics()
+            current_avg_token, current_nb_users, current_nb_requests_in_queue = await try_update_metrics()
 
         llm_params = {
             'llmUrl': LLM_URL,
