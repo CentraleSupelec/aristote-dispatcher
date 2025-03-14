@@ -35,6 +35,7 @@ class RPCServer:
         self.connection: AbstractConnection = None
         self.channel: AbstractChannel = None
         self.queue: AbstractQueue = None
+        self.is_consuming = False
 
     async def first_connect(self) -> None:
         logging.debug("Connecting consumer to RabbitMQ...")
@@ -50,10 +51,7 @@ class RPCServer:
                     "x-expires": settings.RPC_QUEUE_EXPIRATION,
                 },
             )
-            await self.queue.consume(
-                self.on_message_callback,
-                no_ack=True,
-            )
+            asyncio.create_task(self.monitor_server())
         except Exception as e:
             logging.error(f"Error connecting to RabbitMQ: {e}")
             raise
@@ -90,20 +88,40 @@ class RPCServer:
                 self.channel = None
                 logging.info("RPC disconnected")
 
+    async def monitor_server(self):
+        """
+        Continuously check server availability and start/stop message consumption accordingly.
+        """
+        while True:
+            try:
+                current_avg_token, current_nb_users, current_nb_requests_in_queue = await try_update_metrics()
+
+                if (
+                    current_nb_requests_in_queue <= NB_REQUESTS_IN_QUEUE_THRESHOLD
+                    and (
+                        current_avg_token >= AVG_TOKEN_THRESHOLD
+                        or current_nb_users <= NB_USER_THRESHOLD
+                    )
+                ):
+                    # Server is available, ensure we are consuming messages
+                    if not self.is_consuming:
+                        logging.info("Server is ready, starting message consumption.")
+                        await self.queue.consume(self.on_message_callback)
+                        self.is_consuming = True
+                else:
+                    # Server is overloaded, pause message consumption
+                    if self.is_consuming:
+                        logging.info("Server is overloaded, pausing message consumption.")
+                        await self.queue.cancel()
+                        self.is_consuming = False
+
+            except Exception as e:
+                logging.error(f"Error checking server availability: {e}")
+
+            await asyncio.sleep(WAIT_FOR_LLM_DELAY)
+
     async def on_message_callback(self, message: AbstractIncomingMessage):
         logging.debug(f"Message consumed on queue {MODEL}")
-
-        current_avg_token, current_nb_users, current_nb_requests_in_queue = await try_update_metrics()
-
-        while (
-            current_nb_requests_in_queue > NB_REQUESTS_IN_QUEUE_THRESHOLD
-            or (
-                current_avg_token < AVG_TOKEN_THRESHOLD
-                and current_nb_users > NB_USER_THRESHOLD
-            )
-        ):
-            await asyncio.sleep(WAIT_FOR_LLM_DELAY)
-            current_avg_token, current_nb_users, current_nb_requests_in_queue = await try_update_metrics()
 
         llm_params = {
             'llmUrl': LLM_URL,
@@ -120,9 +138,10 @@ class RPCServer:
                 routing_key=message.reply_to,
             )
             logging.info(f"LLM URL for model {MODEL} sent to API")
+            await message.ack()
         except Exception as e:
             logging.error(f"An error occured while publishing message: {e}")
-            raise
+            await message.nack(requeue=True)
 
     async def check_connection(self) -> bool:
         if self.connection and self.channel:

@@ -68,12 +68,12 @@ async def wait_for_vllm():
     for i in range(MAX_INITIAL_METRICS_RETRIES):
         try:
             await update_metrics()
-            logging.info("vllm is ready")
+            logging.info("vllm is up")
             break
         except Exception as e:
             logging.error(
-                f"Waiting for vllm to be ready ({i+1}/{MAX_INITIAL_METRICS_RETRIES}): {e}"
+                f"Waiting for vllm to be up ({i+1}/{MAX_INITIAL_METRICS_RETRIES}): {e}"
             )
             await asyncio.sleep(INITIAL_METRCIS_WAIT)
     else:
-        raise Exception(f"vllm is not ready after {INITIAL_METRCIS_WAIT*MAX_INITIAL_METRICS_RETRIES}s")
+        raise Exception(f"vllm is still down after {INITIAL_METRCIS_WAIT*MAX_INITIAL_METRICS_RETRIES}s")
