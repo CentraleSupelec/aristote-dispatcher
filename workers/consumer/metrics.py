@@ -69,7 +69,7 @@ async def stream_update_metrics(vllm_servers: List[VLLMServer], retry: int = DEF
 
             logging.info(f"Received metrics from {vllm_server.url}: avg_token={current_avg_token}, users={current_nb_users}, queue={current_nb_requests_in_queue}")
 
-            yield current_avg_token, current_nb_users, current_nb_requests_in_queue, vllm_server
+            yield current_avg_token, current_nb_users, current_nb_requests_in_queue, vllm_server, tasks
 
         except Exception as e:
             logging.error(f"Failed to fetch metrics from a server: {e}")
@@ -83,6 +83,9 @@ async def wait_for_vllms(vllm_servers: List[VLLMServer]) -> None:
         if task.exception() is None:
             logging.info(f"Server {tasks[task]} is ready.")
             break
+    else:
+        logging.error(f"No vllm ready after {INITIAL_METRCIS_WAIT*MAX_INITIAL_METRICS_RETRIES}s")
+        raise task.exception()
 
     for task in pending:
         task.cancel()

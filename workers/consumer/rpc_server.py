@@ -90,7 +90,7 @@ class RPCServer:
                 logging.info("RPC disconnected")
 
     async def find_best_server(self, vllm_servers: List[VLLMServer], retry: int = DEFAULT_RETRY) -> VLLMServer:
-        async for current_avg_token, current_nb_users, current_nb_requests_in_queue, vllm_server in stream_update_metrics(vllm_servers, retry):
+        async for current_avg_token, current_nb_users, current_nb_requests_in_queue, vllm_server, tasks in stream_update_metrics(vllm_servers, retry):
             if (
                 current_nb_requests_in_queue <= NB_REQUESTS_IN_QUEUE_THRESHOLD
                 and (
@@ -98,6 +98,9 @@ class RPCServer:
                     or current_nb_users <= NB_USER_THRESHOLD
                 )
             ):
+                for task in tasks:
+                    if not task.done():
+                        task.cancel()
                 return vllm_server
         
         raise Exception("No suitable VLLM server found with good enough metrics")
