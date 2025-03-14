@@ -27,6 +27,7 @@ async def update_metrics():
 
     line_pattern = r"^vllm:avg_generation_throughput_toks_per_s.*$"
     num_requests_running = r"^vllm:num_requests_running.*$"
+    num_requests_waiting = r"^vllm:num_requests_waiting.*$"
 
     tokens_per_second = float(
         re.search(line_pattern, content, re.MULTILINE).group(0).split(" ")[1]
@@ -34,15 +35,19 @@ async def update_metrics():
     current_nb_users = float(
         re.search(num_requests_running, content, re.MULTILINE).group(0).split(" ")[1]
     )
+    current_nb_requests_in_queue = float(
+        re.search(num_requests_waiting, content, re.MULTILINE).group(0).split(" ")[1]
+    )
     current_avg_token = (
         tokens_per_second / current_nb_users if current_nb_users else inf
     )
 
     logging.debug(f" > [Metrics] Tokens per second: {tokens_per_second}")
     logging.debug(f" > [Metrics] Running requests: {current_nb_users}")
+    logging.debug(f" > [Metrics] Waiting requests: {current_nb_requests_in_queue}")
     logging.debug(f" > [Metrics] Average token per user: {current_avg_token}")
 
-    return current_avg_token, current_nb_users
+    return current_avg_token, current_nb_users, current_nb_requests_in_queue
 
 
 async def try_update_metrics(retry: int = DEFAULT_RETRY):

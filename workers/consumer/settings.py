@@ -21,8 +21,10 @@ class Settings(BaseSettings):
     USE_PROBES: int = Field(default=0)
     PROBE_PORT: int = Field(default=8081)
     DEFAULT_LLM_URL: Optional[str] = Field(alias="LLM_URL", default=None)
+    LLM_TOKEN: Optional[str] = Field(alias="LLM_TOKEN", default=None)
     MAX_VLLM_CONNECTION_ATTEMPTS: int = Field(default=100)
     INITIAL_METRCIS_WAIT: int = Field(default=5)
+    NB_REQUESTS_IN_QUEUE_THRESHOLD: int = Field(default=5)
 
     @property
     def LLM_URL(self):
