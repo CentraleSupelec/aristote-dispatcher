@@ -40,10 +40,10 @@ async def update_metrics(vllm_server: VLLMServer) -> Tuple[float, float, float, 
         tokens_per_second / current_nb_users if current_nb_users else inf
     )
 
-    logging.debug(f" > [Metrics] Tokens per second: {tokens_per_second}")
-    logging.debug(f" > [Metrics] Running requests: {current_nb_users}")
-    logging.debug(f" > [Metrics] Waiting requests: {current_nb_requests_in_queue}")
-    logging.debug(f" > [Metrics] Average token per user: {current_avg_token}")
+    logging.debug(f" > [Metrics for {vllm_server.url}] Tokens per second: {tokens_per_second}")
+    logging.debug(f" > [Metrics for {vllm_server.url}] Running requests: {current_nb_users}")
+    logging.debug(f" > [Metrics for {vllm_server.url}] Waiting requests: {current_nb_requests_in_queue}")
+    logging.debug(f" > [Metrics for {vllm_server.url}] Average token per user: {current_avg_token}")
 
     return current_avg_token, current_nb_users, current_nb_requests_in_queue, vllm_server
 

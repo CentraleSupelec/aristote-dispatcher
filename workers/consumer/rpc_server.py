@@ -89,7 +89,7 @@ class RPCServer:
                 self.channel = None
                 logging.info("RPC disconnected")
 
-    async def find_best_server(self, vllm_servers: List[VLLMServer], retry: int = DEFAULT_RETRY) -> VLLMServer:
+    async def find_first_available_server(self, vllm_servers: List[VLLMServer], retry: int = DEFAULT_RETRY) -> VLLMServer:
         async for current_avg_token, current_nb_users, current_nb_requests_in_queue, vllm_server, tasks in stream_update_metrics(vllm_servers, retry):
             if (
                 current_nb_requests_in_queue <= NB_REQUESTS_IN_QUEUE_THRESHOLD
@@ -107,7 +107,7 @@ class RPCServer:
 
     async def on_message_callback(self, message: AbstractIncomingMessage):
         logging.debug(f"Message consumed on queue {MODEL}")
-        vllm_server = await self.find_best_server(settings.VLLM_SERVERS)
+        vllm_server = await self.find_first_available_server(settings.VLLM_SERVERS)
 
         llm_params = {
             'llmUrl': vllm_server.url,

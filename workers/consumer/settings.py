@@ -1,15 +1,10 @@
 from typing import Optional, List
 from pydantic_settings import BaseSettings
 from pydantic import Field
-from dataclasses import dataclass
+from vllm_server import VLLMServer
 import logging
 import json
 
-
-@dataclass(frozen=True)
-class VLLMServer:
-    url: str
-    token: str
 
 class Settings(BaseSettings):
     AVG_TOKEN_THRESHOLD: int = Field(default=7)
