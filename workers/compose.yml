@@ -9,6 +9,7 @@ services:
     image: postgres
     volumes:
       - ./init_db/init_postgres.sql.example:/docker-entrypoint-initdb.d/init.sql
+      - db-data:/var/lib/postgresql/data
     environment:
       POSTGRES_USER: user
       POSTGRES_PASSWORD: password
@@ -60,7 +61,7 @@ services:
       RABBITMQ_PASSWORD: guest
       RABBITMQ_HOST: rabbitmq
       RABBITMQ_PORT: 5672
-      VLLM_SERVERS: '{"http://host.docker.internal:50000": "optional_token_here"}'
+      VLLM_SERVERS: '{"http://vllm:8000": "optional_token_here"}'
     restart: on-failure
     depends_on:
       - rabbitmq
@@ -102,3 +103,6 @@ services:
   #     - VLLM_PORT=8001
   #     # - OMP_NUM_THREADS=4  # Limit to 4 CPU threads
   #     # - VLLM_CPU_MAX_THREADS=4  # (if vLLM respects this env)
+
+volumes:
+  db-data:
