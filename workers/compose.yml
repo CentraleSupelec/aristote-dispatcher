@@ -8,7 +8,8 @@ services:
   postgres:
     image: postgres
     volumes:
-      - ./init_db/init_postgres.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./init_db/init_postgres.sql.example:/docker-entrypoint-initdb.d/init.sql
+      - db-data:/var/lib/postgresql/data
     environment:
       POSTGRES_USER: user
       POSTGRES_PASSWORD: password
@@ -48,38 +49,60 @@ services:
     restart: on-failure
     depends_on:
       - rabbitmq
+      - postgres
 
   consumer:
     build:
       context: ./consumer
     environment:
-      LOG_LEVEL: 20
-      MODEL: casperhansen/mixtral-instruct-awq
+      LOG_LEVEL: 10
+      MODEL: Qwen/Qwen2.5-1.5B-Instruct
       RABBITMQ_USER: guest
       RABBITMQ_PASSWORD: guest
       RABBITMQ_HOST: rabbitmq
       RABBITMQ_PORT: 5672
-      LLM_URL: http://host.docker.internal:50000
+      VLLM_SERVERS: '{"http://vllm:8000": "optional_token_here"}'
     restart: on-failure
     depends_on:
       - rabbitmq
 
   vllm:
-    image: vllm/vllm-openai
+    image: vllm-arm:0.6.6
     ports:
       - 50000:8000
     entrypoint:
       - python3
       - -m
       - vllm.entrypoints.openai.api_server
-      # - --model
-      # - "model"
+      - --model
+      - "Qwen/Qwen2.5-1.5B-Instruct"
       # - --quantization=quantization
-      # - --dtype=dtype
-      # - --gpu-memory-utilization=.gpuMemoryUtilization
-      # - --rope-scaling=rope_scaling_json
-      # - --rope-theta=rope_scaling_theta
+      - --dtype=float16
       - --trust-remote-code
     environment:
-      # - HF_TOKEN=token
-      - PORT=8000
+      - VLLM_PORT=8000
+      # - OMP_NUM_THREADS=4  # Limit to 4 CPU threads
+      # - VLLM_CPU_MAX_THREADS=4  # (if vLLM respects this env)
+
+  # Uncomment to test load balancing
+  # vllm-b:
+  #   image: vllm-arm:0.6.6
+  #   ports:
+  #     - 50001:8001
+  #   entrypoint:
+  #     - python3
+  #     - -m
+  #     - vllm.entrypoints.openai.api_server
+  #     - --model
+  #     - "Qwen/Qwen2.5-1.5B-Instruct"
+  #     # - --quantization=quantization
+  #     - --dtype=float16
+  #     - --trust-remote-code
+  #     - --port=8001
+  #   environment:
+  #     - VLLM_PORT=8001
+  #     # - OMP_NUM_THREADS=4  # Limit to 4 CPU threads
+  #     # - VLLM_CPU_MAX_THREADS=4  # (if vLLM respects this env)
+
+volumes:
+  db-data:

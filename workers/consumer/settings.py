@@ -1,7 +1,9 @@
-from typing import Optional
+from typing import Optional, List
 from pydantic_settings import BaseSettings
 from pydantic import Field
+from vllm_server import VLLMServer
 import logging
+import json
 
 
 class Settings(BaseSettings):
@@ -20,17 +22,20 @@ class Settings(BaseSettings):
     TARGET_PORT: int = Field(default=8080)
     USE_PROBES: int = Field(default=0)
     PROBE_PORT: int = Field(default=8081)
-    DEFAULT_LLM_URL: Optional[str] = Field(alias="LLM_URL", default=None)
-    LLM_TOKEN: Optional[str] = Field(alias="LLM_TOKEN", default=None)
+    DEFAULT_VLLM_SERVERS: Optional[str] = Field(default=None, alias="VLLM_SERVERS")
     MAX_VLLM_CONNECTION_ATTEMPTS: int = Field(default=100)
     INITIAL_METRCIS_WAIT: int = Field(default=5)
     NB_REQUESTS_IN_QUEUE_THRESHOLD: int = Field(default=5)
 
     @property
-    def LLM_URL(self):
+    def VLLM_SERVERS(self):
 
-        if self.DEFAULT_LLM_URL:
-            return self.DEFAULT_LLM_URL
+        if self.DEFAULT_VLLM_SERVERS:
+            try:
+                servers = json.loads(self.DEFAULT_VLLM_SERVERS)
+                return [VLLMServer(url=url, token=token if token else None) for url, token in servers.items()]
+            except json.JSONDecodeError:
+                raise ValueError("Invalid JSON format for VLLM_SERVERS")
         else:
 
             if not self.POD_NAME:

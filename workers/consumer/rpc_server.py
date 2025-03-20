@@ -9,14 +9,13 @@ from aio_pika.abc import (
     AbstractQueue,
     AbstractIncomingMessage,
 )
-from metrics import try_update_metrics
-from settings import settings
+from metrics import stream_update_metrics, DEFAULT_RETRY
+from settings import settings, VLLMServer
+from typing import List
 
 
 # === Set constants ===
 
-LLM_URL = settings.LLM_URL
-LLM_TOKEN = settings.LLM_TOKEN
 MODEL = settings.MODEL
 
 RABBITMQ_URL = settings.RABBITMQ_URL
@@ -90,24 +89,29 @@ class RPCServer:
                 self.channel = None
                 logging.info("RPC disconnected")
 
+    async def find_first_available_server(self, vllm_servers: List[VLLMServer], retry: int = DEFAULT_RETRY) -> VLLMServer:
+        async for current_avg_token, current_nb_users, current_nb_requests_in_queue, vllm_server, tasks in stream_update_metrics(vllm_servers, retry):
+            if (
+                current_nb_requests_in_queue <= NB_REQUESTS_IN_QUEUE_THRESHOLD
+                and (
+                    current_avg_token >= AVG_TOKEN_THRESHOLD
+                    or current_nb_users <= NB_USER_THRESHOLD
+                )
+            ):
+                for task in tasks:
+                    if not task.done():
+                        task.cancel()
+                return vllm_server
+        
+        raise Exception("No suitable VLLM server found with good enough metrics")
+
     async def on_message_callback(self, message: AbstractIncomingMessage):
         logging.debug(f"Message consumed on queue {MODEL}")
-
-        current_avg_token, current_nb_users, current_nb_requests_in_queue = await try_update_metrics()
-
-        while (
-            current_nb_requests_in_queue > NB_REQUESTS_IN_QUEUE_THRESHOLD
-            or (
-                current_avg_token < AVG_TOKEN_THRESHOLD
-                and current_nb_users > NB_USER_THRESHOLD
-            )
-        ):
-            await asyncio.sleep(WAIT_FOR_LLM_DELAY)
-            current_avg_token, current_nb_users, current_nb_requests_in_queue = await try_update_metrics()
+        vllm_server = await self.find_first_available_server(settings.VLLM_SERVERS)
 
         llm_params = {
-            'llmUrl': LLM_URL,
-            'llmToken': LLM_TOKEN
+            'llmUrl': vllm_server.url,
+            'llmToken': vllm_server.token
         }
         
         try:
@@ -121,7 +125,7 @@ class RPCServer:
             )
             logging.info(f"LLM URL for model {MODEL} sent to API")
         except Exception as e:
-            logging.error(f"An error occured while publishing message: {e}")
+            logging.error(f"An error occurred while publishing message: {e}")
             raise
 
     async def check_connection(self) -> bool:
