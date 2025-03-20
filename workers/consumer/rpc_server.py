@@ -25,6 +25,11 @@ NB_USER_THRESHOLD = settings.NB_USER_THRESHOLD
 NB_REQUESTS_IN_QUEUE_THRESHOLD = settings.NB_REQUESTS_IN_QUEUE_THRESHOLD
 
 RPC_RECONNECT_ATTEMPTS = settings.RPC_RECONNECT_ATTEMPTS
+
+VLLM_SERVERS = settings.VLLM_SERVERS
+
+MONITOR_METRICS = settings.MONITOR_METRICS
+
 WAIT_FOR_LLM_DELAY = 1
 
 
@@ -107,7 +112,11 @@ class RPCServer:
 
     async def on_message_callback(self, message: AbstractIncomingMessage):
         logging.debug(f"Message consumed on queue {MODEL}")
-        vllm_server = await self.find_first_available_server(settings.VLLM_SERVERS)
+
+        if MONITOR_METRICS:
+            vllm_server = await self.find_first_available_server(VLLM_SERVERS)
+        else:
+            vllm_server = VLLM_SERVERS[0]
 
         llm_params = {
             'llmUrl': vllm_server.url,
