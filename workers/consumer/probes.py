@@ -1,6 +1,6 @@
 from aiohttp import web
-from settings import settings
 from rpc_server import rpc_server
+from settings import settings
 
 
 class Prober:

@@ -1,19 +1,18 @@
+import asyncio
 import json
 import logging
 import time
 from contextlib import asynccontextmanager
-import asyncio
-from starlette.background import BackgroundTask, BackgroundTasks
-from aio_pika.exceptions import ChannelClosed
 
+from aio_pika.exceptions import ChannelClosed
 from db import Database
 from fastapi import FastAPI, Request
-from fastapi.responses import StreamingResponse, JSONResponse, PlainTextResponse
+from fastapi.responses import JSONResponse, PlainTextResponse, StreamingResponse
 from httpx import AsyncClient
 from models import get_model_by_id, get_models
 from rpc_client import RPCClient
 from settings import Settings
-
+from starlette.background import BackgroundTask, BackgroundTasks
 
 settings = Settings()
 

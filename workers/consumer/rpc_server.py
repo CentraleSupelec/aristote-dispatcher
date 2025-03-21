@@ -1,18 +1,17 @@
 import asyncio
 import json
 import logging
-
-from aio_pika import connect_robust, Message, DeliveryMode
-from aio_pika.abc import (
-    AbstractConnection,
-    AbstractChannel,
-    AbstractQueue,
-    AbstractIncomingMessage,
-)
-from metrics import stream_update_metrics, DEFAULT_RETRY
-from settings import settings, VLLMServer
 from typing import List
 
+from aio_pika import DeliveryMode, Message, connect_robust
+from aio_pika.abc import (
+    AbstractChannel,
+    AbstractConnection,
+    AbstractIncomingMessage,
+    AbstractQueue,
+)
+from metrics import DEFAULT_RETRY, stream_update_metrics
+from settings import VLLMServer, settings
 
 # === Set constants ===
 

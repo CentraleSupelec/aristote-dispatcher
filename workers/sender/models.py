@@ -1,7 +1,7 @@
 import time
+
 from httpx import AsyncClient
 from settings import Settings
-
 
 models = []
 

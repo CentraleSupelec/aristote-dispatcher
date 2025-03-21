@@ -1,11 +1,11 @@
 import asyncio
 import logging
 import re
+from math import inf
+from typing import List, Tuple
 
 from httpx import AsyncClient
-from math import inf
-from settings import settings, VLLMServer
-from typing import Tuple, List
+from settings import VLLMServer, settings
 
 DEFAULT_RETRY = 5
 

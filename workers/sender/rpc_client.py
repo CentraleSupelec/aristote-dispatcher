@@ -1,14 +1,15 @@
-import logging
 import asyncio
+import logging
 import uuid
-from aio_pika import connect_robust, Message, DeliveryMode
+from typing import MutableMapping
+
+from aio_pika import DeliveryMode, Message, connect_robust
 from aio_pika.abc import (
     AbstractChannel,
     AbstractConnection,
-    AbstractQueue,
     AbstractIncomingMessage,
+    AbstractQueue,
 )
-from typing import MutableMapping
 from settings import Settings
 
 
