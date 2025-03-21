@@ -1,5 +1,5 @@
-aio_pika
-aiohttp
-httpx
-pydantic
-pydantic_settings
+aio_pika==9.5.5
+aiohttp==3.11.14
+httpx==0.28.1
+pydantic==2.10.6
+pydantic_settings==2.8.1

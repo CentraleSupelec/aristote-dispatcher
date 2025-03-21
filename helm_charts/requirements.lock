@@ -1,9 +1,0 @@
-dependencies:
-- name: mysql
-  repository: https://charts.bitnami.com/bitnami
-  version: 10.3.0
-- name: postgresql
-  repository: https://charts.bitnami.com/bitnami
-  version: 15.4.1
-digest: sha256:1a9539872b7346f61878210e12044de8b3e180b9332c2049a0e2b102bbcdbf22
-generated: "2024-09-12T14:40:03.496225+02:00"
