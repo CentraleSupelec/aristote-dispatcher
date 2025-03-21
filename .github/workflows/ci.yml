@@ -11,7 +11,6 @@ permissions:
 jobs:
   lint-and-format:
     runs-on: ubuntu-latest
-    container: python:3.11-slim 
 
     steps:
       - name: Checkout code
@@ -24,9 +23,9 @@ jobs:
 
       - name: Install system dependencies
         run: |
-          apt-get update && apt-get install -y --no-install-recommends \
+          sudo apt-get update && sudo apt-get install -y --no-install-recommends \
             build-essential \
-            && rm -rf /var/lib/apt/lists/*
+            && sudo rm -rf /var/lib/apt/lists/*
 
       - name: Install project dependencies
         run: |
@@ -45,15 +44,14 @@ jobs:
 
       - name: Run pylint with custom exit code handling
         run: |
-          pylint workers/sender workers/consumer
-          exit_code=$?
-          if [ $exit_code -eq 1 ] || [ $exit_code -eq 2 ] || [ $exit_code -eq 3 ]; then
-            echo "pylint found fatal errors or errors. Failing the job."
+          pylint workers/sender workers/consumer --exit-zero --output=pylint-out.txt
+          cat pylint-out.txt
+          if grep -q -E "[EF][0-9]{4}" pylint-out.txt; then
+            echo "Pylint found errors"
+            rm pylint-out.txt
             exit 1
-          else
-            echo "pylint found only warnings, refactors, or conventions. Allowing the job to pass."
-            exit 0
           fi
+          rm pylint-out.txt
 
   deploy:
     runs-on: ubuntu-latest

@@ -5,7 +5,8 @@ from math import inf
 from typing import List, Tuple
 
 from httpx import AsyncClient
-from settings import VLLMServer, settings
+from settings import settings
+from vllm_server import VLLMServer
 
 DEFAULT_RETRY = 5
 
