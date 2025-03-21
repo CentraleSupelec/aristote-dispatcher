@@ -2,11 +2,10 @@ import asyncio
 import logging
 import signal
 
+from metrics import wait_for_vllms
 from probes import prober
 from rpc_server import rpc_server
 from settings import settings
-from metrics import wait_for_vllms
-
 
 shutdown_signal = asyncio.Event()
 
@@ -22,6 +21,7 @@ async def main_consumer():
     await shutdown_signal.wait()
 
     await rpc_server.close()
+
 
 def shutdown():
     logging.info("Shutting down consumer...")

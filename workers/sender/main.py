@@ -1,19 +1,18 @@
+import asyncio
 import json
 import logging
 import time
 from contextlib import asynccontextmanager
-import asyncio
-from starlette.background import BackgroundTask, BackgroundTasks
-from aio_pika.exceptions import ChannelClosed
 
+from aio_pika.exceptions import ChannelClosed
 from db import Database
 from fastapi import FastAPI, Request
-from fastapi.responses import StreamingResponse, JSONResponse, PlainTextResponse
+from fastapi.responses import JSONResponse, PlainTextResponse, StreamingResponse
 from httpx import AsyncClient
 from models import get_model_by_id, get_models
 from rpc_client import RPCClient
 from settings import Settings
-
+from starlette.background import BackgroundTask, BackgroundTasks
 
 settings = Settings()
 
@@ -178,12 +177,12 @@ async def proxy(request: Request, call_next):
     logging.info("RPC response received")
 
     llm_params = json.loads(rpc_response.body.decode())
-    llm_url = llm_params['llmUrl']
-    llm_token = llm_params['llmToken']
+    llm_url = llm_params["llmUrl"]
+    llm_token = llm_params["llmToken"]
 
     headers = {}
     if llm_token:
-        headers['Authorization'] = f"Bearer {llm_token}"
+        headers["Authorization"] = f"Bearer {llm_token}"
     logging.info(f"LLM Url received : {llm_url}")
 
     http_client = AsyncClient(base_url=llm_url, timeout=300.0)

@@ -1,8 +1,9 @@
+import logging
+from abc import ABC, abstractmethod
+
 import aiomysql
 import asyncpg
-import logging
 from settings import Settings
-from abc import ABC, abstractmethod
 
 
 class Database(ABC):
