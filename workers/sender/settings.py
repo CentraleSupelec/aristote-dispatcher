@@ -8,10 +8,9 @@ class Settings(BaseSettings):
     LOG_LEVEL: int = Field(default=logging.INFO)
     RABBITMQ_USER: str = Field(default="guest")
     RABBITMQ_PASSWORD: str = Field(default="guest")
-    RABBITMQ_HOST: str = Field(default="localhost")
+    RABBITMQ_HOST: str = Field(default="rabbitmq")
     RABBITMQ_PORT: int = Field(default=5672)
     RABBITMQ_MANAGEMENT_PORT: int = Field(default=15672)
-    RPC_RECONNECT_ATTEMPTS: int = Field(default=10)
 
     DB_TYPE: str = Field(default="mysql")
     DB_HOST: str = Field()
