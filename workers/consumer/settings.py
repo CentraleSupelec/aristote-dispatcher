@@ -1,6 +1,5 @@
 import json
 import logging
-from typing import List, Optional
 
 from pydantic import Field
 from pydantic_settings import BaseSettings
