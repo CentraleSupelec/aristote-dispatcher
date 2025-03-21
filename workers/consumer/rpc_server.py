@@ -60,22 +60,22 @@ class RPCServer:
             logging.info("Consumer connected to RabbitMQ")
 
     async def reconnect_callback(self, connection: AbstractConnection) -> None:
-            logging.info("Reconnecting to RabbitMQ...")
-            self.connection = connection
-            self.channel = await connection.channel()
-            await self.channel.set_qos(prefetch_count=1)
-            self.queue = await self.channel.declare_queue(
-                name=MODEL,
-                durable=True,
-                arguments={
-                    "x-expires": settings.RPC_QUEUE_EXPIRATION,
-                },
-            )
-            await self.queue.consume(
-                self.on_message_callback,
-                no_ack=True,
-            )
-            logging.info("Reconnected to RabbitMQ")
+        logging.info("Reconnecting to RabbitMQ...")
+        self.connection = connection
+        self.channel = await connection.channel()
+        await self.channel.set_qos(prefetch_count=1)
+        self.queue = await self.channel.declare_queue(
+            name=MODEL,
+            durable=True,
+            arguments={
+                "x-expires": settings.RPC_QUEUE_EXPIRATION,
+            },
+        )
+        await self.queue.consume(
+            self.on_message_callback,
+            no_ack=True,
+        )
+        logging.info("Reconnected to RabbitMQ")
 
     async def close(self) -> None:
         logging.debug("Closing RPC connection...")
@@ -89,31 +89,33 @@ class RPCServer:
                 self.channel = None
                 logging.info("RPC disconnected")
 
-    async def find_first_available_server(self, vllm_servers: List[VLLMServer], retry: int = DEFAULT_RETRY) -> VLLMServer:
-        async for current_avg_token, current_nb_users, current_nb_requests_in_queue, vllm_server, tasks in stream_update_metrics(vllm_servers, retry):
-            if (
-                current_nb_requests_in_queue <= NB_REQUESTS_IN_QUEUE_THRESHOLD
-                and (
-                    current_avg_token >= AVG_TOKEN_THRESHOLD
-                    or current_nb_users <= NB_USER_THRESHOLD
-                )
+    async def find_first_available_server(
+        self, vllm_servers: List[VLLMServer], retry: int = DEFAULT_RETRY
+    ) -> VLLMServer:
+        async for (
+            current_avg_token,
+            current_nb_users,
+            current_nb_requests_in_queue,
+            vllm_server,
+            tasks,
+        ) in stream_update_metrics(vllm_servers, retry):
+            if current_nb_requests_in_queue <= NB_REQUESTS_IN_QUEUE_THRESHOLD and (
+                current_avg_token >= AVG_TOKEN_THRESHOLD
+                or current_nb_users <= NB_USER_THRESHOLD
             ):
                 for task in tasks:
                     if not task.done():
                         task.cancel()
                 return vllm_server
-        
+
         raise Exception("No suitable VLLM server found with good enough metrics")
 
     async def on_message_callback(self, message: AbstractIncomingMessage):
         logging.debug(f"Message consumed on queue {MODEL}")
         vllm_server = await self.find_first_available_server(settings.VLLM_SERVERS)
 
-        llm_params = {
-            'llmUrl': vllm_server.url,
-            'llmToken': vllm_server.token
-        }
-        
+        llm_params = {"llmUrl": vllm_server.url, "llmToken": vllm_server.token}
+
         try:
             await self.channel.default_exchange.publish(
                 Message(

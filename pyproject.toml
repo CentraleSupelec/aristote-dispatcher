@@ -1,7 +1,7 @@
 [tool.black]
 line-length = 88
 target-version = ['py311']
-extend-exclude = "^(?!workers/).*"
+include = 'workers/.*\.py$'
 
 [tool.pylint."MESSAGES CONTROL"]
 disable = ["C0114", "C0115", "C0116"]  # Disable missing docstring warnings

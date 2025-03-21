@@ -23,6 +23,7 @@ async def main_consumer():
 
     await rpc_server.close()
 
+
 def shutdown():
     logging.info("Shutting down consumer...")
     shutdown_signal.set()
