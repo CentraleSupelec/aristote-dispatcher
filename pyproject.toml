@@ -1,0 +1,29 @@
+[tool.black]
+line-length = 88
+target-version = ['py311']
+extend-exclude = "^(?!workers/).*"
+
+[tool.pylint."MESSAGES CONTROL"]
+disable = ["C0114", "C0115", "C0116"]  # Disable missing docstring warnings
+
+[tool.pylint.basic]
+good-names = ["i", "j", "k", "x", "y", "z"]
+
+[tool.isort]
+profile = "black"
+
+[tool.setuptools]
+py-modules = []
+
+[project]
+name = "dev-tools"
+version = "0.1.0"
+dependencies = []
+
+[project.optional-dependencies]
+dev = [
+    "black",
+    "pylint",
+    "pre-commit",
+    "isort"
+]
