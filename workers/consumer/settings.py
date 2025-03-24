@@ -1,4 +1,4 @@
-from typing import Optional, List
+from typing import Optional, Literal
 from pydantic_settings import BaseSettings
 from pydantic import Field
 from vllm_server import VLLMServer
@@ -26,6 +26,7 @@ class Settings(BaseSettings):
     MAX_VLLM_CONNECTION_ATTEMPTS: int = Field(default=100)
     INITIAL_METRCIS_WAIT: int = Field(default=5)
     NB_REQUESTS_IN_QUEUE_THRESHOLD: int = Field(default=5)
+    ROUTING_STRATEGY: Literal["less-busy", "round-robin"] = Field(default=None)
 
     @property
     def VLLM_SERVERS(self):

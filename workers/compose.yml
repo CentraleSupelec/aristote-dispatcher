@@ -62,6 +62,7 @@ services:
       RABBITMQ_HOST: rabbitmq
       RABBITMQ_PORT: 5672
       VLLM_SERVERS: '{"http://vllm:8000": "optional_token_here"}'
+      ROUTING_STRATEGY: less-busy
     restart: on-failure
     depends_on:
       - rabbitmq
