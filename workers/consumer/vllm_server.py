@@ -4,3 +4,4 @@ from dataclasses import dataclass
 class VLLMServer:
     url: str
     token: str
+    exposes_metrics: bool

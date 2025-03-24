@@ -61,7 +61,7 @@ services:
       RABBITMQ_PASSWORD: guest
       RABBITMQ_HOST: rabbitmq
       RABBITMQ_PORT: 5672
-      VLLM_SERVERS: '{"http://vllm:8000": "optional_token_here"}'
+      VLLM_SERVERS: '{"http://vllm:8000": {"token": "optional_token_here", "exposes_metrics": true}}'
     restart: on-failure
     depends_on:
       - rabbitmq

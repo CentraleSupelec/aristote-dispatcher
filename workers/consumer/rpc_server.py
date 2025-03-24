@@ -27,8 +27,8 @@ NB_REQUESTS_IN_QUEUE_THRESHOLD = settings.NB_REQUESTS_IN_QUEUE_THRESHOLD
 RPC_RECONNECT_ATTEMPTS = settings.RPC_RECONNECT_ATTEMPTS
 
 VLLM_SERVERS = settings.VLLM_SERVERS
-
-MONITOR_METRICS = settings.MONITOR_METRICS
+SERVERS_WITH_METRICS = [server for server in VLLM_SERVERS if server.exposes_metrics]
+SERVERS_WITHOUT_METRICS = [server for server in VLLM_SERVERS if not server.exposes_metrics]
 
 WAIT_FOR_LLM_DELAY = 1
 
@@ -39,6 +39,7 @@ class RPCServer:
         self.connection: AbstractConnection = None
         self.channel: AbstractChannel = None
         self.queue: AbstractQueue = None
+        self.round_robin_idx = 0
 
     async def first_connect(self) -> None:
         logging.debug("Connecting consumer to RabbitMQ...")
@@ -107,16 +108,18 @@ class RPCServer:
                     if not task.done():
                         task.cancel()
                 return vllm_server
-        
-        raise Exception("No suitable VLLM server found with good enough metrics")
+        return None
 
     async def on_message_callback(self, message: AbstractIncomingMessage):
         logging.debug(f"Message consumed on queue {MODEL}")
 
-        if MONITOR_METRICS:
-            vllm_server = await self.find_first_available_server(VLLM_SERVERS)
-        else:
-            vllm_server = VLLM_SERVERS[0]
+        vllm_server = await self.find_first_available_server(SERVERS_WITH_METRICS)
+        if not vllm_server: # There is no server with good enough metrics (possibly no server exposing metrics at all)
+            if SERVERS_WITHOUT_METRICS: # Then we select a server that does not expose metrics (if any), following a round robin strategy
+                vllm_server = SERVERS_WITHOUT_METRICS[self.round_robin_idx%len(SERVERS_WITHOUT_METRICS)]
+                self.round_robin_idx += 1
+            else: # If all metrics-enabled servers are busy and there is no no-metrics servers configured, we cannot forward the request
+                raise Exception("No suitable VLLM server found")
 
         llm_params = {
             'llmUrl': vllm_server.url,

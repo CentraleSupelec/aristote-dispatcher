@@ -26,7 +26,6 @@ class Settings(BaseSettings):
     MAX_VLLM_CONNECTION_ATTEMPTS: int = Field(default=100)
     INITIAL_METRCIS_WAIT: int = Field(default=5)
     NB_REQUESTS_IN_QUEUE_THRESHOLD: int = Field(default=5)
-    MONITOR_METRICS: Optional[bool] = Field(default=True)
 
     @property
     def VLLM_SERVERS(self):
@@ -34,7 +33,16 @@ class Settings(BaseSettings):
         if self.DEFAULT_VLLM_SERVERS:
             try:
                 servers = json.loads(self.DEFAULT_VLLM_SERVERS)
-                return [VLLMServer(url=url, token=token if token else None) for url, token in servers.items()]
+                vllm_servers = [
+                    VLLMServer(
+                        url=url,
+                        token=server.get("token"),
+                        exposes_metrics=server.get("exposes_metrics")
+                    )
+                    for url, server in servers.items()
+                ]
+                logging.debug(vllm_servers)
+                return vllm_servers
             except json.JSONDecodeError:
                 raise ValueError("Invalid JSON format for VLLM_SERVERS")
         else:
