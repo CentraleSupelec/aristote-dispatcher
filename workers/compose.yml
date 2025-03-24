@@ -55,6 +55,7 @@ services:
       LOG_LEVEL: 10
       MODEL: Qwen/Qwen2.5-1.5B-Instruct
       VLLM_SERVERS: '{"http://vllm:8000": "optional_token_here"}'
+      ROUTING_STRATEGY: less-busy
     restart: on-failure
     depends_on:
       - rabbitmq
