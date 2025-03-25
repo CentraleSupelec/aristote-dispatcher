@@ -1,14 +1,62 @@
 name: ci
+
 on:
   push:
     branches:
-      - master
-      - main
+      - '**'
+
 permissions:
   contents: write
+
 jobs:
+  lint-and-format:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update && sudo apt-get install -y --no-install-recommends \
+            build-essential \
+            && sudo rm -rf /var/lib/apt/lists/*
+
+      - name: Install project dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r workers/sender/requirements.txt
+          pip install -r workers/consumer/requirements.txt
+          pip install .[dev]
+
+      - name: Run black
+        run: |
+          black --check --verbose .
+
+      - name: Run isort
+        run: |
+          isort --profile black --filter-files -c -v .
+
+      - name: Run pylint with custom exit code handling
+        run: |
+          pylint workers/sender workers/consumer --exit-zero --output=pylint-out.txt
+          cat pylint-out.txt
+          if grep -q -E "[EF][0-9]{4}" pylint-out.txt; then
+            echo "Pylint found errors"
+            rm pylint-out.txt
+            exit 1
+          fi
+          rm pylint-out.txt
+
   deploy:
     runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v4

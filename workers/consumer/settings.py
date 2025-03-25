@@ -1,9 +1,11 @@
-from typing import Optional, List
-from pydantic_settings import BaseSettings
-from pydantic import Field
-from vllm_server import VLLMServer
-import logging
 import json
+import logging
+from typing import List, Optional
+
+from pydantic import Field
+from pydantic_settings import BaseSettings
+
+from .vllm_server import VLLMServer
 
 
 class Settings(BaseSettings):
@@ -33,7 +35,10 @@ class Settings(BaseSettings):
         if self.DEFAULT_VLLM_SERVERS:
             try:
                 servers = json.loads(self.DEFAULT_VLLM_SERVERS)
-                return [VLLMServer(url=url, token=token if token else None) for url, token in servers.items()]
+                return [
+                    VLLMServer(url=url, token=token if token else None)
+                    for url, token in servers.items()
+                ]
             except json.JSONDecodeError:
                 raise ValueError("Invalid JSON format for VLLM_SERVERS")
         else:

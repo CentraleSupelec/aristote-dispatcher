@@ -1,9 +1,15 @@
-import logging
 import asyncio
+import logging
 import uuid
-from aio_pika import connect_robust, Message, DeliveryMode
-from aio_pika.abc import AbstractChannel, AbstractConnection, AbstractQueue, AbstractIncomingMessage
 from typing import MutableMapping
+
+from aio_pika import DeliveryMode, Message, connect_robust
+from aio_pika.abc import (
+    AbstractChannel,
+    AbstractConnection,
+    AbstractIncomingMessage,
+    AbstractQueue,
+)
 from settings import Settings
 
 
@@ -12,7 +18,7 @@ class RPCClient:
         self.futures: MutableMapping[str, asyncio.Future] = {}
         self.settings = settings
         self.connection: AbstractConnection = None
-        self.channel: AbstractChannel= None
+        self.channel: AbstractChannel = None
         self.callback_queue: AbstractQueue = None
         self.consumer_tag = None
 
@@ -23,7 +29,9 @@ class RPCClient:
             self.connection.reconnect_callbacks.add(self.reconnect_callback)
             self.channel = await self.connection.channel()
             self.callback_queue = await self.channel.declare_queue(exclusive=True)
-            self.consumer_tag = await self.callback_queue.consume(self.on_response, no_ack=True)
+            self.consumer_tag = await self.callback_queue.consume(
+                self.on_response, no_ack=True
+            )
         except Exception as e:
             logging.error(f"Error connecting to RabbitMQ: {e}")
             raise
@@ -35,7 +43,9 @@ class RPCClient:
         self.connection = connection
         self.channel = await connection.channel()
         self.callback_queue = await self.channel.declare_queue(exclusive=True)
-        self.consumer_tag = await self.callback_queue.consume(self.on_response, no_ack=True)
+        self.consumer_tag = await self.callback_queue.consume(
+            self.on_response, no_ack=True
+        )
         logging.info("Reconnected to RabbitMQ")
 
     async def close(self) -> None:
@@ -61,13 +71,15 @@ class RPCClient:
         logging.debug(f" > Response body: {message.body}")
         future.set_result(message)
 
-    async def call(self, priority: int, threshold: int, model: str) -> AbstractIncomingMessage | int:
+    async def call(
+        self, priority: int, threshold: int, model: str
+    ) -> AbstractIncomingMessage | int:
         model_queue = await self.channel.get_queue(name=model)
-        nb_messages = model_queue.declaration_result.message_count            
+        nb_messages = model_queue.declaration_result.message_count
         logging.debug(f"{nb_messages} messages in the model queue : {model}")
         if nb_messages > threshold:
             return 1
-        
+
         logging.info(f"New request for model {model}")
         correlation_id = str(uuid.uuid4())
         loop = asyncio.get_running_loop()
@@ -75,12 +87,12 @@ class RPCClient:
         self.futures[correlation_id] = future
 
         await self.channel.default_exchange.publish(
-            message = Message(
+            message=Message(
                 body=b"AVAILABLE?",
                 delivery_mode=DeliveryMode.PERSISTENT,
                 correlation_id=correlation_id,
                 reply_to=self.callback_queue.name,
-                priority=priority
+                priority=priority,
             ),
             routing_key=model,
         )
@@ -88,7 +100,7 @@ class RPCClient:
         response: AbstractIncomingMessage = await future
         logging.info(f"Received URL for model {model}")
         return response
-        
+
     async def check_connection(self):
         if self.connection and self.channel:
             if not self.connection.is_closed and not self.channel.is_closed:
