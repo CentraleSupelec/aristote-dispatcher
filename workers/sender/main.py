@@ -25,7 +25,7 @@ logging.basicConfig(
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan():
     logging.info("Opening database connection")
     global database
     database = await Database.init_database(settings=settings)
@@ -89,8 +89,7 @@ async def proxy(request: Request, call_next):
         state = await rpc_client.check_connection()
         if state:
             return PlainTextResponse(content="OK", status_code=200)
-        else:
-            return PlainTextResponse(content="KO", status_code=503)
+        return PlainTextResponse(content="KO", status_code=503)
 
     # Authorization
     try:
@@ -113,7 +112,7 @@ async def proxy(request: Request, call_next):
                 return JSONResponse(
                     content={"An internal error occured"}, status_code=500
                 )
-    user_id, token, priority, threshold, client_type = user
+    user_id, _, priority, threshold, client_type = user
     threshold = 0 if threshold is None else threshold
 
     logging.info("User %s authorized", user_id)
@@ -152,10 +151,11 @@ async def proxy(request: Request, call_next):
 
     try:
         rpc_response = await rpc_client.call(priority, threshold, requested_model)
-    except ChannelClosed as e:
+    except ChannelClosed:
         # the queue may have been deleted (ex: consumer does not exist anymore)
         logging.debug(
-            "Queue %s seems to not be existing anymore. Refreshing models...", requested_model
+            "Queue %s seems to not be existing anymore. Refreshing models...",
+            requested_model,
         )
         asyncio.create_task(get_models(settings))
         return JSONResponse(
@@ -166,7 +166,7 @@ async def proxy(request: Request, call_next):
             status_code=404,
         )
 
-    if type(rpc_response) == int:
+    if isinstance(rpc_response, int):
         response_content = {"error": "Too many people using the service"}
         match client_type:
             case "chat":

@@ -1,4 +1,5 @@
 import logging
+from typing import Literal
 
 from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings
@@ -22,12 +23,13 @@ class Settings(BaseSettings):
     @model_validator(mode="after")
     def check_required_fields(self):
         missing_fields = [
-            field for field in ["DB_HOST", "DB_USER", "DB_PASSWORD", "DB_DATABASE"]
+            field
+            for field in ["DB_HOST", "DB_USER", "DB_PASSWORD", "DB_DATABASE"]
             if not getattr(self, field, None)
         ]
         if missing_fields:
             raise ValueError(f"Missing required fields: {', '.join(missing_fields)}")
-        
+
         return self
 
     @model_validator(mode="after")
@@ -36,7 +38,7 @@ class Settings(BaseSettings):
             raise ValueError("MySQL must use port 3306")
         if self.DB_TYPE == "postgres" and self.DB_PORT != 5432:
             raise ValueError("Postgres must use port 5432")
-        
+
         return self
 
     @property

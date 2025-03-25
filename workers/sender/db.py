@@ -39,9 +39,6 @@ class Database(ABC):
 class MySQLDatabase(Database):
     pool: aiomysql.Pool | None = None
 
-    def __init__(self, settings: Settings) -> None:
-        super().__init__(settings)
-
     async def create_connection_pool(self):
         self.pool = await aiomysql.create_pool(
             host=self.settings.DB_HOST,
@@ -75,9 +72,6 @@ class MySQLDatabase(Database):
 
 class PostgreSQLDatabase(Database):
     pool: asyncpg.Pool | None = None
-
-    def __init__(self, settings: Settings) -> None:
-        super().__init__(settings)
 
     async def create_connection_pool(self):
         self.pool = await asyncpg.create_pool(

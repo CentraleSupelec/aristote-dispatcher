@@ -34,8 +34,8 @@ class Settings(BaseSettings):
                     VLLMServer(url=url, token=token if token else None)
                     for url, token in servers.items()
                 ]
-            except json.JSONDecodeError:
-                raise ValueError("Invalid JSON format for VLLM_SERVERS")
+            except json.JSONDecodeError as e:
+                raise ValueError("Invalid JSON format for VLLM_SERVERS") from e
         else:
             raise ValueError("VLLM_SERVERS env variable is required")
 
