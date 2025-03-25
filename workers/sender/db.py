@@ -55,7 +55,7 @@ class MySQLDatabase(Database):
         if self.pool is None:
             raise ValueError("Pool is not initialized")
 
-        logging.debug(f"Executing query {mysql_query} with args {args}")
+        logging.debug("Executing query %s with args %s", mysql_query, args)
 
         async with self.pool.acquire() as connection:
             async with connection.cursor() as cursor:
@@ -63,7 +63,7 @@ class MySQLDatabase(Database):
                 await cursor.execute(mysql_query, args)
                 result = await cursor.fetchall()
 
-                logging.debug(f" [x] Result : {result}")
+                logging.debug(" [x] Result : %s", result)
 
                 return result[0]
 
@@ -92,12 +92,12 @@ class PostgreSQLDatabase(Database):
         if self.pool is None:
             raise ValueError("Pool is not initialized")
 
-        logging.debug(f"Executing query {postgres_query} with args {args}")
+        logging.debug("Executing query %s with args %s", postgres_query, args)
 
         async with self.pool.acquire() as connection:
             async with connection.transaction():
                 result = await connection.fetchrow(postgres_query, *args)
-                logging.debug(f"Result : {result}")
+                logging.debug("Result : %s", result)
 
                 return result
 

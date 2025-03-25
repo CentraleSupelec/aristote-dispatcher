@@ -43,7 +43,7 @@ if __name__ == "__main__":
     try:
         loop.run_until_complete(main_consumer())
     except Exception as e:
-        logging.fatal(f"Consumer fatal error: {e}")
+        logging.fatal("Consumer fatal error: %s", e)
         raise
     finally:
         if settings.USE_PROBES:

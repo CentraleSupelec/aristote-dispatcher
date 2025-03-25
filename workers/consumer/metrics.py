@@ -45,16 +45,16 @@ async def update_metrics(
     )
 
     logging.debug(
-        f" > [Metrics for {vllm_server.url}] Tokens per second: {tokens_per_second}"
+        " > [Metrics for %s] Tokens per second: %s", vllm_server.url, tokens_per_second
     )
     logging.debug(
-        f" > [Metrics for {vllm_server.url}] Running requests: {current_nb_users}"
+        " > [Metrics for %s] Running requests: %s", vllm_server.url, current_nb_users
     )
     logging.debug(
-        f" > [Metrics for {vllm_server.url}] Waiting requests: {current_nb_requests_in_queue}"
+        " > [Metrics for %s] Waiting requests: %s", vllm_server.url, current_nb_requests_in_queue
     )
     logging.debug(
-        f" > [Metrics for {vllm_server.url}] Average token per user: {current_avg_token}"
+        " > [Metrics for %s] Average token per user: %s", vllm_server.url, current_avg_token
     )
 
     return (
@@ -73,15 +73,15 @@ async def try_update_metrics(
             return await update_metrics(vllm_server)
         except Exception as e:
             logging.error(
-                f"Attempt {attempt+1}/{retry} to update model metrics at {vllm_server.url} failed: {e}"
+                "Attempt %s to update model metrics at %s failed: %s", (attempt+1)/retry, vllm_server.url, e
             )
             await asyncio.sleep(attempt)
     else:
         logging.error(
-            f"Failed to update model metrics atfer {retry} attempts at {vllm_server.url}"
+            "Failed to update model metrics atfer %s attempts at %s", retry, vllm_server.url
         )
         raise Exception(
-            f"Failed to update model metrics atfer {retry} attempts at {vllm_server.url}"
+            "Failed to update model metrics atfer %s attempts at %s", retry, vllm_server.url
         )
 
 
@@ -103,13 +103,13 @@ async def stream_update_metrics(
             ) = await task
 
             logging.info(
-                f"Received metrics from {vllm_server.url}: avg_token={current_avg_token}, users={current_nb_users}, queue={current_nb_requests_in_queue}"
+                "Received metrics from %s: avg_token=%s, users=%s, queue=%s", vllm_server.url, current_avg_token, current_nb_users, current_nb_requests_in_queue
             )
 
             yield current_avg_token, current_nb_users, current_nb_requests_in_queue, vllm_server, tasks
 
         except Exception as e:
-            logging.error(f"Failed to fetch metrics from a server: {e}")
+            logging.error("Failed to fetch metrics from a server: %s", e)
 
 
 async def wait_for_vllms(vllm_servers: List[VLLMServer]) -> None:
@@ -124,11 +124,11 @@ async def wait_for_vllms(vllm_servers: List[VLLMServer]) -> None:
 
     for task in done:
         if task.exception() is None:
-            logging.info(f"Server {tasks[task]} is ready.")
+            logging.info("Server %s is ready.", tasks[task])
             break
     else:
         logging.error(
-            f"No vllm ready after {INITIAL_METRCIS_WAIT*MAX_INITIAL_METRICS_RETRIES}s"
+            "No vllm ready after %ss", INITIAL_METRCIS_WAIT*MAX_INITIAL_METRICS_RETRIES
         )
         raise task.exception()
 
@@ -144,7 +144,7 @@ async def wait_for_vllm(vllm_server: VLLMServer) -> None:
             break
         except Exception as e:
             logging.error(
-                f"Waiting for vllm to be ready ({i+1}/{MAX_INITIAL_METRICS_RETRIES}): {e}"
+                "Waiting for vllm to be ready (%s): %s", (i+1)/MAX_INITIAL_METRICS_RETRIES, e
             )
             await asyncio.sleep(INITIAL_METRCIS_WAIT)
     else:
