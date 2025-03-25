@@ -4,7 +4,8 @@ from typing import List, Optional
 
 from pydantic import Field
 from pydantic_settings import BaseSettings
-from vllm_server import VLLMServer
+
+from .vllm_server import VLLMServer
 
 
 class Settings(BaseSettings):

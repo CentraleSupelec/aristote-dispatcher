@@ -10,8 +10,10 @@ from aio_pika.abc import (
     AbstractIncomingMessage,
     AbstractQueue,
 )
-from metrics import DEFAULT_RETRY, stream_update_metrics
-from settings import VLLMServer, settings
+
+from .metrics import DEFAULT_RETRY, stream_update_metrics
+from .settings import settings
+from .vllm_server import VLLMServer
 
 # === Set constants ===
 

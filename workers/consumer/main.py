@@ -2,10 +2,10 @@ import asyncio
 import logging
 import signal
 
-from metrics import wait_for_vllms
-from probes import prober
-from rpc_server import rpc_server
-from settings import settings
+from .metrics import wait_for_vllms
+from .probes import prober
+from .rpc_server import rpc_server
+from .settings import settings
 
 shutdown_signal = asyncio.Event()
 
