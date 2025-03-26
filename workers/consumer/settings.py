@@ -25,7 +25,7 @@ class Settings(BaseSettings):
     NB_REQUESTS_IN_QUEUE_THRESHOLD: int = Field(default=5)
 
     @property
-    def VLLM_SERVERS(self):
+    def VLLM_SERVERS(self):  # pylint: disable=invalid-name
 
         if self.DEFAULT_VLLM_SERVERS:
             try:
@@ -40,7 +40,7 @@ class Settings(BaseSettings):
             raise ValueError("VLLM_SERVERS env variable is required")
 
     @property
-    def RABBITMQ_URL(self):
+    def RABBITMQ_URL(self):  # pylint: disable=invalid-name
         return f"amqp://{self.RABBITMQ_USER}:{self.RABBITMQ_PASSWORD}@{self.RABBITMQ_HOST}:{self.RABBITMQ_PORT}/"
 
 

@@ -42,9 +42,9 @@ class Settings(BaseSettings):
         return self
 
     @property
-    def RABBITMQ_URL(self):
+    def RABBITMQ_URL(self):  # pylint: disable=invalid-name
         return f"amqp://{self.RABBITMQ_USER}:{self.RABBITMQ_PASSWORD}@{self.RABBITMQ_HOST}:{self.RABBITMQ_PORT}/"
 
     @property
-    def RABBITMQ_MANAGEMENT_URL(self):
+    def RABBITMQ_MANAGEMENT_URL(self):  # pylint: disable=invalid-name
         return f"http://{self.RABBITMQ_HOST}:{self.RABBITMQ_MANAGEMENT_PORT}"
