@@ -13,7 +13,7 @@ class Settings(BaseSettings):
     RABBITMQ_PORT: int = Field(default=5672)
     RABBITMQ_MANAGEMENT_PORT: int = Field(default=15672)
 
-    DB_TYPE: Literal["mysql", "postgres"] = Field(default="mysql")
+    DB_TYPE: Literal["mysql", "postgresql"] = Field(default="mysql")
     DB_HOST: str = Field()
     DB_PORT: int = Field(default=3306)
     DB_USER: str = Field()
@@ -36,8 +36,8 @@ class Settings(BaseSettings):
     def enforce_correct_port(self):
         if self.DB_TYPE == "mysql" and self.DB_PORT != 3306:
             raise ValueError("MySQL must use port 3306")
-        if self.DB_TYPE == "postgres" and self.DB_PORT != 5432:
-            raise ValueError("Postgres must use port 5432")
+        if self.DB_TYPE == "postgresql" and self.DB_PORT != 5432:
+            raise ValueError("Postgresql must use port 5432")
 
         return self
 

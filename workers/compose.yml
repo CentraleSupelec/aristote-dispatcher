@@ -38,6 +38,7 @@ services:
     environment:
       LOG_LEVEL: 20
       DB_TYPE: postgresql
+      DB_PORT: 5432
       DB_HOST: postgres
       DB_USER: user
       DB_PASSWORD: password
