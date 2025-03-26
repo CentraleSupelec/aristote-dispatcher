@@ -6,6 +6,7 @@ from contextlib import asynccontextmanager
 
 from aio_pika.exceptions import ChannelClosed
 from db import Database
+from exceptions import InvalidTokenException, NoTokenException, UnauthorizedException
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, PlainTextResponse, StreamingResponse
 from httpx import AsyncClient
@@ -51,12 +52,12 @@ async def authorize(request: Request):
     authorization = request.headers.get("Authorization")
 
     if not authorization:
-        raise Exception("NO_TOK")
+        raise NoTokenException()
 
     token_parts = authorization.split()
 
     if len(token_parts) != 2 or token_parts[0] != "Bearer":
-        raise Exception("INV_TOK")
+        raise InvalidTokenException()
 
     user = await database.execute(
         "SELECT * FROM users WHERE token = %s",
@@ -65,7 +66,7 @@ async def authorize(request: Request):
     )
 
     if not user:
-        raise Exception("UNAUTH")
+        raise UnauthorizedException()
 
     return user
 
@@ -94,24 +95,8 @@ async def proxy(request: Request, call_next):
     # Authorization
     try:
         user = await authorize(request)
-    except Exception as e:
-        match str(e):
-            case "NO_TOK":
-                logging.error("No token provided")
-                return JSONResponse(
-                    content={"error": "No token provided"}, status_code=401
-                )
-            case "INV_TOK":
-                logging.error("Invalid token")
-                return JSONResponse(content={"error": "Invalid token"}, status_code=401)
-            case "UNAUTH":
-                logging.error("Unauthorized")
-                return JSONResponse(content={"error": "Unauthorized"}, status_code=401)
-            case e:
-                logging.error("An unexpected error occurred while authorizing: %s", e)
-                return JSONResponse(
-                    content={"An internal error occured"}, status_code=500
-                )
+    except (NoTokenException, InvalidTokenException, UnauthorizedException) as e:
+        return JSONResponse(status_code=e.status_code, content={"error": e.detail})
     user_id, _, priority, threshold, client_type = user
     threshold = 0 if threshold is None else threshold
 
@@ -193,22 +178,15 @@ async def proxy(request: Request, call_next):
     logging.info("Request ( Method: %s ; URL: %s )", request.method, request.url.path)
     logging.debug(" > Request content: %s", body)
 
-    try:
-        res = await http_client.send(req, stream=True)
-        logging.info("Proxy request sent")
-        background_tasks = BackgroundTasks(
-            [
-                BackgroundTask(res.aclose),
-                BackgroundTask(http_client.aclose),
-                BackgroundTask(
-                    logging.info, f"Finished request started at {start_hour}"
-                ),
-            ]
-        )
-    except Exception as e:
-        logging.error(e)
-        return JSONResponse(content={"error": "Internal error"}, status_code=500)
-    else:
-        return StreamingResponse(
-            res.aiter_raw(), headers=res.headers, background=background_tasks
-        )
+    res = await http_client.send(req, stream=True)
+    logging.info("Proxy request sent")
+    background_tasks = BackgroundTasks(
+        [
+            BackgroundTask(res.aclose),
+            BackgroundTask(http_client.aclose),
+            BackgroundTask(logging.info, f"Finished request started at {start_hour}"),
+        ]
+    )
+    return StreamingResponse(
+        res.aiter_raw(), headers=res.headers, background=background_tasks
+    )

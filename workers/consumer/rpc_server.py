@@ -10,6 +10,7 @@ from aio_pika.abc import (
     AbstractQueue,
 )
 
+from .exceptions import NoSuitableVllm
 from .metrics import DEFAULT_RETRY, stream_update_metrics
 from .settings import settings
 from .vllm_server import VLLMServer
@@ -105,7 +106,7 @@ class RPCServer:
                         task.cancel()
                 return vllm_server
 
-        raise Exception("No suitable VLLM server found with good enough metrics")
+        raise NoSuitableVllm()
 
     async def on_message_callback(self, message: AbstractIncomingMessage):
         logging.debug("Message consumed on queue %s", MODEL)

@@ -6,6 +6,7 @@ from typing import List, Tuple
 
 from httpx import AsyncClient
 
+from .exceptions import ModelMetricsUpdateException, VllmNotReadyException
 from .settings import settings
 from .vllm_server import VLLMServer
 
@@ -86,10 +87,7 @@ async def try_update_metrics(
     logging.error(
         "Failed to update model metrics atfer %s attempts at %s", retry, vllm_server.url
     )
-    raise Exception(
-        "Failed to update model metrics atfer %s attempts at %s"
-        % (retry, vllm_server.url)
-    )
+    raise ModelMetricsUpdateException(retry, vllm_server.url)
 
 
 async def stream_update_metrics(
@@ -119,7 +117,7 @@ async def stream_update_metrics(
 
             yield current_avg_token, current_nb_users, current_nb_requests_in_queue, vllm_server, tasks
 
-        except Exception as e:
+        except ModelMetricsUpdateException as e:
             logging.error("Failed to fetch metrics from a server: %s", e)
 
 
@@ -162,6 +160,4 @@ async def wait_for_vllm(vllm_server: VLLMServer) -> None:
             )
             await asyncio.sleep(INITIAL_METRCIS_WAIT)
     else:
-        raise Exception(
-            f"vllm is not ready after {INITIAL_METRCIS_WAIT*MAX_INITIAL_METRICS_RETRIES}s"
-        )
+        raise VllmNotReadyException(INITIAL_METRCIS_WAIT * MAX_INITIAL_METRICS_RETRIES)
