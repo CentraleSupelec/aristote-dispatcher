@@ -25,7 +25,7 @@ logging.basicConfig(
 
 
 @asynccontextmanager
-async def lifespan():
+async def lifespan(_: FastAPI):
     logging.info("Opening database connection")
     global database
     database = await Database.init_database(settings=settings)
