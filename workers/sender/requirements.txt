@@ -1,5 +1,5 @@
 aio_pika==9.5.5
-fastapi==0.115.11
+fastapi[standard]
 asyncpg==0.30.0
 aiomysql==0.2.0
 httpx==0.28.1
