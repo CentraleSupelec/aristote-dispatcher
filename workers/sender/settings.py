@@ -32,15 +32,6 @@ class Settings(BaseSettings):
 
         return self
 
-    @model_validator(mode="after")
-    def enforce_correct_port(self):
-        if self.DB_TYPE == "mysql" and self.DB_PORT != 3306:
-            raise ValueError("MySQL must use port 3306")
-        if self.DB_TYPE == "postgresql" and self.DB_PORT != 5432:
-            raise ValueError("Postgresql must use port 5432")
-
-        return self
-
     @property
     def RABBITMQ_URL(self):  # pylint: disable=invalid-name
         return f"amqp://{self.RABBITMQ_USER}:{self.RABBITMQ_PASSWORD}@{self.RABBITMQ_HOST}:{self.RABBITMQ_PORT}/"
