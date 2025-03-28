@@ -1,6 +1,5 @@
 import json
 import logging
-from time import time
 
 from aio_pika import DeliveryMode, Message, connect_robust
 from aio_pika.abc import (
@@ -47,7 +46,7 @@ class RPCServer:
             vllm.url: {
                 "last_generation_tokens_total": None,
                 "last_update_timestamp": None,
-                "first_update": True
+                "first_update": True,
             }
             for vllm in self.vllm_servers
         }
