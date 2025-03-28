@@ -1,6 +1,6 @@
 import json
 import logging
-from typing import List
+from time import time
 
 from aio_pika import DeliveryMode, Message, connect_robust
 from aio_pika.abc import (
@@ -32,6 +32,15 @@ class RPCServer:
         self.connection: AbstractConnection = None
         self.channel: AbstractChannel = None
         self.queue: AbstractQueue = None
+        self.vllm_servers = settings.VLLM_SERVERS
+        self.throughput_metrics = {
+            vllm.url: {
+                "last_generation_tokens_total": None,
+                "last_update_timestamp": None,
+                "first_update": True
+            }
+            for vllm in self.vllm_servers
+        }
 
     async def first_connect(self) -> None:
         logging.debug("Connecting consumer to RabbitMQ...")
@@ -88,7 +97,7 @@ class RPCServer:
                 logging.info("RPC disconnected")
 
     async def find_first_available_server(
-        self, vllm_servers: List[VLLMServer], retry: int = DEFAULT_RETRY
+        self, retry: int = DEFAULT_RETRY
     ) -> VLLMServer:
         async for (
             current_avg_token,
@@ -96,7 +105,7 @@ class RPCServer:
             current_nb_requests_in_queue,
             vllm_server,
             tasks,
-        ) in stream_update_metrics(vllm_servers, retry):
+        ) in stream_update_metrics(self.vllm_servers, self.throughput_metrics, retry):
             if current_nb_requests_in_queue <= NB_REQUESTS_IN_QUEUE_THRESHOLD and (
                 current_avg_token >= AVG_TOKEN_THRESHOLD
                 or current_nb_users <= NB_USER_THRESHOLD
@@ -110,7 +119,7 @@ class RPCServer:
 
     async def on_message_callback(self, message: AbstractIncomingMessage):
         logging.debug("Message consumed on queue %s", MODEL)
-        vllm_server = await self.find_first_available_server(settings.VLLM_SERVERS)
+        vllm_server = await self.find_first_available_server()
 
         llm_params = {"llmUrl": vllm_server.url, "llmToken": vllm_server.token}
 
