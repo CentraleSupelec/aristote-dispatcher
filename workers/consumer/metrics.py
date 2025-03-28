@@ -18,7 +18,7 @@ DEFAULT_RETRY = 5
 MAX_INITIAL_METRICS_RETRIES = settings.MAX_VLLM_CONNECTION_ATTEMPTS
 INITIAL_METRCIS_WAIT = settings.INITIAL_METRCIS_WAIT
 
-async def ping_server(vllm_server: VLLMServer):
+async def ping_server(vllm_server: VLLMServer) -> None:
     async with AsyncClient(base_url=vllm_server.url) as http_client:
         response = await http_client.get("/metrics/")
         response.raise_for_status()
@@ -30,23 +30,12 @@ def tokens_per_s(tokens_total: float, last_generation_tokens_total: float, times
         return token_diff / time_diff
     return 0.
 
-async def update_metrics(
-    vllm_server: VLLMServer, throughput_metrics: dict
-) -> Tuple[float, float, float, VLLMServer]:
-
-    async with AsyncClient(base_url=vllm_server.url) as http_client:
-        response = await http_client.get("/metrics/")
-        response.raise_for_status()
-
-    content = response.text
-
-    generation_tokens_total = r"^vllm:generation_tokens_total.*$"
-    num_requests_running = r"^vllm:num_requests_running.*$"
-    num_requests_waiting = r"^vllm:num_requests_waiting.*$"
-
+def update_throughput(
+    content: str, pattern: str, vllm_server: VLLMServer, throughput_metrics: dict
+) -> float:
     timestamp = time()
     tokens_total = float(
-        re.search(generation_tokens_total, content, re.MULTILINE).group(0).split(" ")[1]
+        re.search(pattern, content, re.MULTILINE).group(0).split(" ")[1]
     )
 
     if throughput_metrics[vllm_server.url]["first_update"]:
@@ -60,12 +49,39 @@ async def update_metrics(
     throughput_metrics[vllm_server.url]["last_generation_tokens_total"] = tokens_total
     throughput_metrics[vllm_server.url]["last_update_timestamp"] = timestamp
 
+    return tokens_per_second
+
+async def update_metrics(
+    vllm_server: VLLMServer, throughput_metrics: dict
+) -> Tuple[float, float, float, VLLMServer]:
+
+    async with AsyncClient(base_url=vllm_server.url) as http_client:
+        response = await http_client.get("/metrics/")
+        response.raise_for_status()
+
+    content = response.text
+
+    generation_tokens_total = r"^vllm:generation_tokens_total.*$"
+    throughput = r"^vllm:avg_generation_throughput_toks_per_s.*$"
+    num_requests_running = r"^vllm:num_requests_running.*$"
+    num_requests_waiting = r"^vllm:num_requests_waiting.*$"
+
+
     current_nb_users = float(
         re.search(num_requests_running, content, re.MULTILINE).group(0).split(" ")[1]
     )
     current_nb_requests_in_queue = float(
         re.search(num_requests_waiting, content, re.MULTILINE).group(0).split(" ")[1]
     )
+
+    version_sub_0_7 = re.search(throughput, content, re.MULTILINE)
+    # vllm versions < 0.7 expose the throughput metric. If it's there, we use it
+    if version_sub_0_7:
+        tokens_per_second = version_sub_0_7.group(0).split(" ")[1]
+    # otherwise we compute it by hand based on total tokens and time elapsed
+    else:
+        tokens_per_second = update_throughput(content, generation_tokens_total, vllm_server, throughput_metrics)
+
     current_avg_token = (
         tokens_per_second / current_nb_users if current_nb_users else inf
     )
