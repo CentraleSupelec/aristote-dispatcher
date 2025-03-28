@@ -2,6 +2,7 @@ import asyncio
 import logging
 import re
 from math import inf
+from time import time
 from typing import List, Tuple
 
 from httpx import AsyncClient
@@ -17,9 +18,20 @@ DEFAULT_RETRY = 5
 MAX_INITIAL_METRICS_RETRIES = settings.MAX_VLLM_CONNECTION_ATTEMPTS
 INITIAL_METRCIS_WAIT = settings.INITIAL_METRCIS_WAIT
 
+async def ping_server(vllm_server: VLLMServer):
+    async with AsyncClient(base_url=vllm_server.url) as http_client:
+        response = await http_client.get("/metrics/")
+        response.raise_for_status()
+
+def tokens_per_s(tokens_total: float, last_generation_tokens_total: float, timestamp: float, last_update_timestamp: float):
+    time_diff = timestamp - last_update_timestamp
+    token_diff = tokens_total - last_generation_tokens_total
+    if token_diff > 0:
+        return token_diff / time_diff
+    return 0.
 
 async def update_metrics(
-    vllm_server: VLLMServer,
+    vllm_server: VLLMServer, throughput_metrics: dict
 ) -> Tuple[float, float, float, VLLMServer]:
 
     async with AsyncClient(base_url=vllm_server.url) as http_client:
@@ -28,13 +40,26 @@ async def update_metrics(
 
     content = response.text
 
-    line_pattern = r"^vllm:avg_generation_throughput_toks_per_s.*$"
+    generation_tokens_total = r"^vllm:generation_tokens_total.*$"
     num_requests_running = r"^vllm:num_requests_running.*$"
     num_requests_waiting = r"^vllm:num_requests_waiting.*$"
 
-    tokens_per_second = float(
-        re.search(line_pattern, content, re.MULTILINE).group(0).split(" ")[1]
+    timestamp = time()
+    tokens_total = float(
+        re.search(generation_tokens_total, content, re.MULTILINE).group(0).split(" ")[1]
     )
+
+    if throughput_metrics[vllm_server.url]["first_update"]:
+        tokens_per_second = 0.
+        throughput_metrics[vllm_server.url]["first_update"] = False
+    else:
+        last_timestamp = throughput_metrics[vllm_server.url]["last_update_timestamp"]
+        last_tokens_total = throughput_metrics[vllm_server.url]["last_generation_tokens_total"]
+        tokens_per_second = tokens_per_s(tokens_total, last_tokens_total, timestamp, last_timestamp)
+
+    throughput_metrics[vllm_server.url]["last_generation_tokens_total"] = tokens_total
+    throughput_metrics[vllm_server.url]["last_update_timestamp"] = timestamp
+
     current_nb_users = float(
         re.search(num_requests_running, content, re.MULTILINE).group(0).split(" ")[1]
     )
@@ -71,11 +96,11 @@ async def update_metrics(
 
 
 async def try_update_metrics(
-    vllm_server: VLLMServer, retry: int = DEFAULT_RETRY
+    vllm_server: VLLMServer, throughput_metrics: dict, retry: int = DEFAULT_RETRY
 ) -> Tuple[float, float, float, VLLMServer]:
     for attempt in range(retry):
         try:
-            return await update_metrics(vllm_server)
+            return await update_metrics(vllm_server, throughput_metrics)
         except Exception as e:
             logging.error(
                 "Attempt %s to update model metrics at %s failed: %s",
@@ -91,10 +116,10 @@ async def try_update_metrics(
 
 
 async def stream_update_metrics(
-    vllm_servers: List[VLLMServer], retry: int = DEFAULT_RETRY
+    vllm_servers: List[VLLMServer], throughput_metrics: dict, retry: int = DEFAULT_RETRY
 ):
     tasks = [
-        asyncio.create_task(try_update_metrics(server, retry))
+        asyncio.create_task(try_update_metrics(server, throughput_metrics, retry))
         for server in vllm_servers
     ]
 
@@ -149,13 +174,13 @@ async def wait_for_vllms(vllm_servers: List[VLLMServer]) -> None:
 async def wait_for_vllm(vllm_server: VLLMServer) -> None:
     for i in range(MAX_INITIAL_METRICS_RETRIES):
         try:
-            await update_metrics(vllm_server)
+            await ping_server(vllm_server)
             logging.info("vllm is ready")
             break
         except Exception as e:
             logging.error(
-                "Waiting for vllm to be ready (%s): %s",
-                (i + 1) / MAX_INITIAL_METRICS_RETRIES,
+                "Waiting for vllm to be ready (%s/%s): %s",
+                (i + 1), MAX_INITIAL_METRICS_RETRIES,
                 e,
             )
             await asyncio.sleep(INITIAL_METRCIS_WAIT)
