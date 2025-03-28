@@ -1,10 +1,7 @@
-aio_pika
-fastapi
+aio_pika==9.5.5
 fastapi[standard]
-asyncpg
-requests
-aiomysql
-httpx
-pydantic_settings
-pydantic
-cryptography
+asyncpg==0.30.0
+aiomysql==0.2.0
+httpx==0.28.1
+pydantic_settings==2.8.1
+pydantic==2.10.6

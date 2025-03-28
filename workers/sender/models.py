@@ -1,5 +1,3 @@
-import time
-
 from httpx import AsyncClient
 from settings import Settings
 
@@ -11,7 +9,7 @@ async def get_models(settings: Settings):
 
     async with AsyncClient(base_url=settings.RABBITMQ_MANAGEMENT_URL) as http_client:
         response = await http_client.get(
-            url=f"/api/exchanges/%2F/amq.default/bindings/source",
+            url="/api/exchanges/%2F/amq.default/bindings/source",
             auth=(settings.RABBITMQ_USER, settings.RABBITMQ_PASSWORD),
         )
         response.raise_for_status()
@@ -30,16 +28,14 @@ async def get_models(settings: Settings):
     return models
 
 
-async def get_model_by_id(settings: Settings, id: str):
-    global models
-
+async def get_model_by_id(settings: Settings, model_id: str):
     model_ids = {model["id"] for model in models}
 
-    if id not in model_ids:
+    if model_id not in model_ids:
         await get_models(settings)
 
     for model in models:
-        if model["id"] == id:
+        if model["id"] == model_id:
             return model
 
     return None

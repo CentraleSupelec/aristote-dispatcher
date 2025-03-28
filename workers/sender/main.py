@@ -6,6 +6,7 @@ from contextlib import asynccontextmanager
 
 from aio_pika.exceptions import ChannelClosed
 from db import Database
+from exceptions import InvalidTokenException, NoTokenException, UnauthorizedException
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, PlainTextResponse, StreamingResponse
 from httpx import AsyncClient
@@ -25,7 +26,7 @@ logging.basicConfig(
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(_: FastAPI):
     logging.info("Opening database connection")
     global database
     database = await Database.init_database(settings=settings)
@@ -51,12 +52,12 @@ async def authorize(request: Request):
     authorization = request.headers.get("Authorization")
 
     if not authorization:
-        raise Exception("NO_TOK")
+        raise NoTokenException()
 
     token_parts = authorization.split()
 
     if len(token_parts) != 2 or token_parts[0] != "Bearer":
-        raise Exception("INV_TOK")
+        raise InvalidTokenException()
 
     user = await database.execute(
         "SELECT * FROM users WHERE token = %s",
@@ -65,7 +66,7 @@ async def authorize(request: Request):
     )
 
     if not user:
-        raise Exception("UNAUTH")
+        raise UnauthorizedException()
 
     return user
 
@@ -79,7 +80,7 @@ async def models():
 async def proxy(request: Request, call_next):
     start = time.localtime()
     start_hour = f"{start.tm_hour}:{start.tm_min}:{start.tm_sec}"
-    logging.info(f"Received request on path {request.url.path}")
+    logging.info("Received request on path %s", request.url.path)
 
     if request.method == "GET" and request.url.path == "/health/liveness":
         return PlainTextResponse(content="OK", status_code=200)
@@ -89,34 +90,17 @@ async def proxy(request: Request, call_next):
         state = await rpc_client.check_connection()
         if state:
             return PlainTextResponse(content="OK", status_code=200)
-        else:
-            return PlainTextResponse(content="KO", status_code=503)
+        return PlainTextResponse(content="KO", status_code=503)
 
     # Authorization
     try:
         user = await authorize(request)
-    except Exception as e:
-        match str(e):
-            case "NO_TOK":
-                logging.error("No token provided")
-                return JSONResponse(
-                    content={"error": "No token provided"}, status_code=401
-                )
-            case "INV_TOK":
-                logging.error("Invalid token")
-                return JSONResponse(content={"error": "Invalid token"}, status_code=401)
-            case "UNAUTH":
-                logging.error("Unauthorized")
-                return JSONResponse(content={"error": "Unauthorized"}, status_code=401)
-            case e:
-                logging.error(f"An unexpected error occurred while authorizing: {e}")
-                return JSONResponse(
-                    content={"An internal error occured"}, status_code=500
-                )
-    user_id, token, priority, threshold, client_type = user
+    except (NoTokenException, InvalidTokenException, UnauthorizedException) as e:
+        return JSONResponse(status_code=e.status_code, content={"error": e.detail})
+    user_id, _, priority, threshold, client_type = user
     threshold = 0 if threshold is None else threshold
 
-    logging.info(f"User {user_id} authorized")
+    logging.info("User %s authorized", user_id)
 
     # Handle GET request normally
     if request.method == "GET":
@@ -152,10 +136,11 @@ async def proxy(request: Request, call_next):
 
     try:
         rpc_response = await rpc_client.call(priority, threshold, requested_model)
-    except ChannelClosed as e:
+    except ChannelClosed:
         # the queue may have been deleted (ex: consumer does not exist anymore)
         logging.debug(
-            f"Queue {requested_model} seems to not be existing anymore. Refreshing models..."
+            "Queue %s seems to not be existing anymore. Refreshing models...",
+            requested_model,
         )
         asyncio.create_task(get_models(settings))
         return JSONResponse(
@@ -166,7 +151,7 @@ async def proxy(request: Request, call_next):
             status_code=404,
         )
 
-    if type(rpc_response) == int:
+    if isinstance(rpc_response, int):
         response_content = {"error": "Too many people using the service"}
         match client_type:
             case "chat":
@@ -183,32 +168,25 @@ async def proxy(request: Request, call_next):
     headers = {}
     if llm_token:
         headers["Authorization"] = f"Bearer {llm_token}"
-    logging.info(f"LLM Url received : {llm_url}")
+    logging.info("LLM Url received : %s", llm_url)
 
     http_client = AsyncClient(base_url=llm_url, timeout=300.0)
     req = http_client.build_request(
         method=request.method, url=request.url.path, content=body, headers=headers
     )
 
-    logging.info(f"Request ( Method: {request.method} ; URL: {request.url.path} )")
-    logging.debug(f" > Request content: {body}")
+    logging.info("Request ( Method: %s ; URL: %s )", request.method, request.url.path)
+    logging.debug(" > Request content: %s", body)
 
-    try:
-        res = await http_client.send(req, stream=True)
-        logging.info("Proxy request sent")
-        background_tasks = BackgroundTasks(
-            [
-                BackgroundTask(res.aclose),
-                BackgroundTask(http_client.aclose),
-                BackgroundTask(
-                    logging.info, f"Finished request started at {start_hour}"
-                ),
-            ]
-        )
-    except Exception as e:
-        logging.error(e)
-        return JSONResponse(content={"error": "Internal error"}, status_code=500)
-    else:
-        return StreamingResponse(
-            res.aiter_raw(), headers=res.headers, background=background_tasks
-        )
+    res = await http_client.send(req, stream=True)
+    logging.info("Proxy request sent")
+    background_tasks = BackgroundTasks(
+        [
+            BackgroundTask(res.aclose),
+            BackgroundTask(http_client.aclose),
+            BackgroundTask(logging.info, f"Finished request started at {start_hour}"),
+        ]
+    )
+    return StreamingResponse(
+        res.aiter_raw(), headers=res.headers, background=background_tasks
+    )

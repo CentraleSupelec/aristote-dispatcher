@@ -33,7 +33,7 @@ class RPCClient:
                 self.on_response, no_ack=True
             )
         except Exception as e:
-            logging.error(f"Error connecting to RabbitMQ: {e}")
+            logging.error("Error connecting to RabbitMQ: %s", e)
             raise
         else:
             logging.info("Sender connected to RabbitMQ")
@@ -55,7 +55,7 @@ class RPCClient:
                 await self.callback_queue.cancel(self.consumer_tag)
                 await self.connection.close()
             except Exception as e:
-                logging.error(f"Could not close connection: {e}")
+                logging.error("Could not close connection: %s", e)
             else:
                 logging.info("RPC Connection closed")
                 self.connection = None
@@ -63,12 +63,12 @@ class RPCClient:
 
     async def on_response(self, message: AbstractIncomingMessage) -> None:
         if message.correlation_id is None:
-            logging.error(f"Bad message received {message!r}. Missing correlation_id.")
+            logging.error("Bad message received %r. Missing correlation_id.", message)
             return
 
         future: asyncio.Future = self.futures.pop(message.correlation_id)
-        logging.info(f"Received response.")
-        logging.debug(f" > Response body: {message.body}")
+        logging.info("Received response.")
+        logging.debug(" > Response body: %s", message.body)
         future.set_result(message)
 
     async def call(
@@ -76,11 +76,11 @@ class RPCClient:
     ) -> AbstractIncomingMessage | int:
         model_queue = await self.channel.get_queue(name=model)
         nb_messages = model_queue.declaration_result.message_count
-        logging.debug(f"{nb_messages} messages in the model queue : {model}")
+        logging.debug("%s messages in the model queue : %s", nb_messages, model)
         if nb_messages > threshold:
             return 1
 
-        logging.info(f"New request for model {model}")
+        logging.info("New request for model %s", model)
         correlation_id = str(uuid.uuid4())
         loop = asyncio.get_running_loop()
         future = loop.create_future()
@@ -96,9 +96,9 @@ class RPCClient:
             ),
             routing_key=model,
         )
-        logging.debug(f"Message pushed to model queue {model}")
+        logging.debug("Message pushed to model queue %s", model)
         response: AbstractIncomingMessage = await future
-        logging.info(f"Received URL for model {model}")
+        logging.info("Received URL for model %s", model)
         return response
 
     async def check_connection(self):

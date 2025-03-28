@@ -37,11 +37,8 @@ services:
       - 8080:8080
     environment:
       LOG_LEVEL: 20
-      RABBITMQ_USER: guest
-      RABBITMQ_PASSWORD: guest
-      RABBITMQ_HOST: rabbitmq
-      RABBITMQ_PORT: 5672
       DB_TYPE: postgresql
+      DB_PORT: 5432
       DB_HOST: postgres
       DB_USER: user
       DB_PASSWORD: password
@@ -57,17 +54,19 @@ services:
     environment:
       LOG_LEVEL: 10
       MODEL: Qwen/Qwen2.5-1.5B-Instruct
-      RABBITMQ_USER: guest
-      RABBITMQ_PASSWORD: guest
-      RABBITMQ_HOST: rabbitmq
-      RABBITMQ_PORT: 5672
       VLLM_SERVERS: '{"http://vllm:8000": "optional_token_here"}'
     restart: on-failure
     depends_on:
       - rabbitmq
 
   vllm:
-    image: vllm-arm:0.6.6
+    image: vllm/vllm-openai:v0.6.6
+    # This image works for amd only. For arm architecture, vllm does not provide an image out-of-the-box
+    # In this case you need to build the arm image using the Dockerfile provided in their github repository:
+    # git clone git@github.com:vllm-project/vllm.git
+    # cd vllm
+    # git checkout v0.6.6
+    # docker build -f Dockerfile.arm -t vllm-arm:v0.6.6
     ports:
       - 50000:8000
     entrypoint:
@@ -86,7 +85,7 @@ services:
 
   # Uncomment to test load balancing
   # vllm-b:
-  #   image: vllm-arm:0.6.6
+  #   image: vllm/vllm-openai:v0.6.6
   #   ports:
   #     - 50001:8001
   #   entrypoint:

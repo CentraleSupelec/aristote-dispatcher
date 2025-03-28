@@ -1,4 +1,3 @@
-import asyncio
 import json
 import logging
 from typing import List
@@ -11,6 +10,7 @@ from aio_pika.abc import (
     AbstractQueue,
 )
 
+from .exceptions import NoSuitableVllm
 from .metrics import DEFAULT_RETRY, stream_update_metrics
 from .settings import settings
 from .vllm_server import VLLMServer
@@ -24,9 +24,6 @@ RABBITMQ_URL = settings.RABBITMQ_URL
 AVG_TOKEN_THRESHOLD = settings.AVG_TOKEN_THRESHOLD
 NB_USER_THRESHOLD = settings.NB_USER_THRESHOLD
 NB_REQUESTS_IN_QUEUE_THRESHOLD = settings.NB_REQUESTS_IN_QUEUE_THRESHOLD
-
-RPC_RECONNECT_ATTEMPTS = settings.RPC_RECONNECT_ATTEMPTS
-WAIT_FOR_LLM_DELAY = 1
 
 
 class RPCServer:
@@ -55,7 +52,7 @@ class RPCServer:
                 no_ack=True,
             )
         except Exception as e:
-            logging.error(f"Error connecting to RabbitMQ: {e}")
+            logging.error("Error connecting to RabbitMQ: %s", e)
             raise
         else:
             logging.info("Consumer connected to RabbitMQ")
@@ -84,7 +81,7 @@ class RPCServer:
             try:
                 await self.connection.close()
             except Exception as e:
-                logging.error(f"Could not close RPC connection: {e}")
+                logging.error("Could not close RPC connection: %s", e)
             else:
                 self.connection = None
                 self.channel = None
@@ -109,10 +106,10 @@ class RPCServer:
                         task.cancel()
                 return vllm_server
 
-        raise Exception("No suitable VLLM server found with good enough metrics")
+        raise NoSuitableVllm()
 
     async def on_message_callback(self, message: AbstractIncomingMessage):
-        logging.debug(f"Message consumed on queue {MODEL}")
+        logging.debug("Message consumed on queue %s", MODEL)
         vllm_server = await self.find_first_available_server(settings.VLLM_SERVERS)
 
         llm_params = {"llmUrl": vllm_server.url, "llmToken": vllm_server.token}
@@ -126,9 +123,9 @@ class RPCServer:
                 ),
                 routing_key=message.reply_to,
             )
-            logging.info(f"LLM URL for model {MODEL} sent to API")
+            logging.info("LLM URL for model %s sent to API", MODEL)
         except Exception as e:
-            logging.error(f"An error occurred while publishing message: {e}")
+            logging.error("An error occurred while publishing message: %s", e)
             raise
 
     async def check_connection(self) -> bool:

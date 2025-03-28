@@ -12,7 +12,7 @@ RUN pip install -r requirements.txt
 
 ENV PATH="/home/consumer/.local/bin:${PATH}"
 
-COPY --chown=consumer:consumer . .
+COPY --chown=consumer:consumer . /app/consumer
 
 
-CMD ["python3", "main.py"]
+CMD ["python3", "-m", "consumer.main"]
