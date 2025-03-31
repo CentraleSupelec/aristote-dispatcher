@@ -10,7 +10,7 @@ from aio_pika.abc import (
     AbstractQueue,
 )
 
-from .exceptions import NoSuitableVllm
+from .exceptions import NoSuitableVllm, UnknownStrategy
 from .metrics import DEFAULT_RETRY, stream_update_metrics
 from .settings import settings
 from .vllm_server import VLLMServer
@@ -33,6 +33,7 @@ VLLM_SERVERS = settings.VLLM_SERVERS
 ROUTING_STRATEGY = settings.ROUTING_STRATEGY
 LESS_BUSY = "less-busy"
 ROUND_ROBIN = "round-robin"
+
 
 class RPCServer:
     def __init__(self, url: str) -> None:
@@ -119,18 +120,19 @@ class RPCServer:
 
     async def on_message_callback(self, message: AbstractIncomingMessage):
         logging.debug("Message consumed on queue %s", MODEL)
-        
+
         if ROUTING_STRATEGY == LESS_BUSY:
             vllm_server = await self.find_first_available_server(VLLM_SERVERS)
-        elif ROUTING_STRATEGY == ROUND_ROBIN: # elif for clarity but it's really an else, since ROUTING_STRATEGY is enforced to be either LESS_BUSY or ROUND_ROBIN
+        elif (
+            ROUTING_STRATEGY == ROUND_ROBIN
+        ):  # elif for clarity but it's really an else, since ROUTING_STRATEGY is enforced to be either LESS_BUSY or ROUND_ROBIN
             vllm_server = VLLM_SERVERS[self.round_robin_idx]
             self.round_robin_idx = (self.round_robin_idx + 1) % len(VLLM_SERVERS)
-        
-        llm_params = {
-            'llmUrl': vllm_server.url,
-            'llmToken': vllm_server.token
-        }
-        
+        else:
+            raise UnknownStrategy(ROUTING_STRATEGY)
+
+        llm_params = {"llmUrl": vllm_server.url, "llmToken": vllm_server.token}
+
         try:
             await self.channel.default_exchange.publish(
                 Message(
