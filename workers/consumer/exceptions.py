@@ -14,3 +14,9 @@ class NoSuitableVllm(Exception):
     def __init__(self):
         message = "No suitable VLLM server found with good enough metrics"
         super().__init__(message)
+
+
+class UnknownStrategy(Exception):
+    def __init__(self, passed_strategy):
+        message = f'"{passed_strategy}" not recognized; strategy must be either round-robin or less-busy'
+        super().__init__(message)

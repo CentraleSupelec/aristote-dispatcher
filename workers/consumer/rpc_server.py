@@ -10,7 +10,7 @@ from aio_pika.abc import (
     AbstractQueue,
 )
 
-from .exceptions import NoSuitableVllm
+from .exceptions import NoSuitableVllm, UnknownStrategy
 from .metrics import DEFAULT_RETRY, stream_update_metrics
 from .settings import settings
 from .vllm_server import VLLMServer
@@ -25,6 +25,15 @@ AVG_TOKEN_THRESHOLD = settings.AVG_TOKEN_THRESHOLD
 NB_USER_THRESHOLD = settings.NB_USER_THRESHOLD
 NB_REQUESTS_IN_QUEUE_THRESHOLD = settings.NB_REQUESTS_IN_QUEUE_THRESHOLD
 
+RPC_RECONNECT_ATTEMPTS = settings.RPC_RECONNECT_ATTEMPTS
+WAIT_FOR_LLM_DELAY = 1
+
+VLLM_SERVERS = settings.VLLM_SERVERS
+
+ROUTING_STRATEGY = settings.ROUTING_STRATEGY
+LESS_BUSY = "less-busy"
+ROUND_ROBIN = "round-robin"
+
 
 class RPCServer:
     def __init__(self, url: str) -> None:
@@ -32,6 +41,7 @@ class RPCServer:
         self.connection: AbstractConnection = None
         self.channel: AbstractChannel = None
         self.queue: AbstractQueue = None
+        self.round_robin_idx = 0
 
     async def first_connect(self) -> None:
         logging.debug("Connecting consumer to RabbitMQ...")
@@ -110,7 +120,16 @@ class RPCServer:
 
     async def on_message_callback(self, message: AbstractIncomingMessage):
         logging.debug("Message consumed on queue %s", MODEL)
-        vllm_server = await self.find_first_available_server(settings.VLLM_SERVERS)
+
+        if ROUTING_STRATEGY == LESS_BUSY:
+            vllm_server = await self.find_first_available_server(VLLM_SERVERS)
+        elif (
+            ROUTING_STRATEGY == ROUND_ROBIN
+        ):  # elif for clarity but it's really an else, since ROUTING_STRATEGY is enforced to be either LESS_BUSY or ROUND_ROBIN
+            vllm_server = VLLM_SERVERS[self.round_robin_idx]
+            self.round_robin_idx = (self.round_robin_idx + 1) % len(VLLM_SERVERS)
+        else:
+            raise UnknownStrategy(ROUTING_STRATEGY)
 
         llm_params = {"llmUrl": vllm_server.url, "llmToken": vllm_server.token}
 
