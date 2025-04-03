@@ -9,10 +9,10 @@ from aio_pika.abc import (
     AbstractQueue,
 )
 
-from .exceptions import NoSuitableVllm, UnknownStrategy
-from .metrics import DEFAULT_RETRY, stream_update_metrics
+from .exceptions import UnknownStrategy
 from .settings import settings
-from .vllm_server import VLLMServer
+from .strategy.least_busy import LeastBusy
+from .strategy.round_robin import RoundRobin
 
 # === Set constants ===
 
@@ -30,7 +30,7 @@ WAIT_FOR_LLM_DELAY = 1
 VLLM_SERVERS = settings.VLLM_SERVERS
 
 ROUTING_STRATEGY = settings.ROUTING_STRATEGY
-LESS_BUSY = "less-busy"
+LEAST_BUSY = "least_busy"
 ROUND_ROBIN = "round-robin"
 
 
@@ -40,16 +40,13 @@ class RPCServer:
         self.connection: AbstractConnection = None
         self.channel: AbstractChannel = None
         self.queue: AbstractQueue = None
-        self.round_robin_idx = 0
-        self.vllm_servers = settings.VLLM_SERVERS
-        self.throughput_metrics = {
-            vllm.url: {
-                "last_generation_tokens_total": None,
-                "last_update_timestamp": None,
-                "first_update": True,
-            }
-            for vllm in self.vllm_servers
-        }
+        self.strategy = None
+        if ROUTING_STRATEGY == LEAST_BUSY:
+            self.strategy = LeastBusy(VLLM_SERVERS)
+        elif ROUTING_STRATEGY == ROUND_ROBIN:
+            self.strategy = RoundRobin(VLLM_SERVERS)
+        else:
+            raise UnknownStrategy(ROUTING_STRATEGY)
 
     async def first_connect(self) -> None:
         logging.debug("Connecting consumer to RabbitMQ...")
@@ -105,39 +102,10 @@ class RPCServer:
                 self.channel = None
                 logging.info("RPC disconnected")
 
-    async def find_first_available_server(
-        self, retry: int = DEFAULT_RETRY
-    ) -> VLLMServer:
-        async for (
-            current_avg_token,
-            current_nb_users,
-            current_nb_requests_in_queue,
-            vllm_server,
-            tasks,
-        ) in stream_update_metrics(self.vllm_servers, self.throughput_metrics, retry):
-            if current_nb_requests_in_queue <= NB_REQUESTS_IN_QUEUE_THRESHOLD and (
-                current_avg_token >= AVG_TOKEN_THRESHOLD
-                or current_nb_users <= NB_USER_THRESHOLD
-            ):
-                for task in tasks:
-                    if not task.done():
-                        task.cancel()
-                return vllm_server
-
-        raise NoSuitableVllm()
-
     async def on_message_callback(self, message: AbstractIncomingMessage):
         logging.debug("Message consumed on queue %s", MODEL)
 
-        if ROUTING_STRATEGY == LESS_BUSY:
-            vllm_server = await self.find_first_available_server(VLLM_SERVERS)
-        elif (
-            ROUTING_STRATEGY == ROUND_ROBIN
-        ):  # elif for clarity but it's really an else, since ROUTING_STRATEGY is enforced to be either LESS_BUSY or ROUND_ROBIN
-            vllm_server = VLLM_SERVERS[self.round_robin_idx]
-            self.round_robin_idx = (self.round_robin_idx + 1) % len(VLLM_SERVERS)
-        else:
-            raise UnknownStrategy(ROUTING_STRATEGY)
+        vllm_server = self.strategy.choose_server()
 
         llm_params = {"llmUrl": vllm_server.url, "llmToken": vllm_server.token}
 

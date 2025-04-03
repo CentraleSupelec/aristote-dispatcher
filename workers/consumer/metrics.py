@@ -7,7 +7,7 @@ from typing import List, Tuple
 
 from httpx import AsyncClient
 
-from .exceptions import ModelMetricsUpdateException, VllmNotReadyException
+from .exceptions import VllmNotReadyException
 from .settings import settings
 from .vllm_server import VLLMServer
 
@@ -123,57 +123,6 @@ async def update_metrics(
         current_nb_requests_in_queue,
         vllm_server,
     )
-
-
-async def try_update_metrics(
-    vllm_server: VLLMServer, throughput_metrics: dict, retry: int = DEFAULT_RETRY
-) -> Tuple[float, float, float, VLLMServer]:
-    for attempt in range(retry):
-        try:
-            return await update_metrics(vllm_server, throughput_metrics)
-        except Exception as e:
-            logging.error(
-                "Attempt %s to update model metrics at %s failed: %s",
-                (attempt + 1) / retry,
-                vllm_server.url,
-                e,
-            )
-            await asyncio.sleep(attempt)
-    logging.error(
-        "Failed to update model metrics atfer %s attempts at %s", retry, vllm_server.url
-    )
-    raise ModelMetricsUpdateException(retry, vllm_server.url)
-
-
-async def stream_update_metrics(
-    vllm_servers: List[VLLMServer], throughput_metrics: dict, retry: int = DEFAULT_RETRY
-):
-    tasks = [
-        asyncio.create_task(try_update_metrics(server, throughput_metrics, retry))
-        for server in vllm_servers
-    ]
-
-    for task in asyncio.as_completed(tasks):
-        try:
-            (
-                current_avg_token,
-                current_nb_users,
-                current_nb_requests_in_queue,
-                vllm_server,
-            ) = await task
-
-            logging.info(
-                "Received metrics from %s: avg_token=%s, users=%s, queue=%s",
-                vllm_server.url,
-                current_avg_token,
-                current_nb_users,
-                current_nb_requests_in_queue,
-            )
-
-            yield current_avg_token, current_nb_users, current_nb_requests_in_queue, vllm_server, tasks
-
-        except ModelMetricsUpdateException as e:
-            logging.error("Failed to fetch metrics from a server: %s", e)
 
 
 async def wait_for_vllms(vllm_servers: List[VLLMServer]) -> None:
