@@ -3,12 +3,13 @@ import logging
 import random
 import re
 from math import inf
-from typing import List
+from typing import Dict, List
 
 import aiohttp
 
 from ..exceptions import NoSuitableVllm
 from ..vllm_server import VLLMServer
+from .histogram import Histogram
 from .server_selection_strategy import ServerSelectionStrategy
 
 
@@ -23,10 +24,18 @@ class LeastBusy(ServerSelectionStrategy):
         # The whole monitoring process only cares about urls, not complete server object,
         # which are less handy to use as dictionnary keys (i.e to hash)
         self.threshold = threshold
-        self.e2e_latency_last_histograms = {url: {} for url in self.urls}
-        self.e2e_latency_diff_histograms = {url: {} for url in self.urls}
-        self.time_to_first_token_last_histograms = {url: {} for url in self.urls}
-        self.time_to_first_token_diff_histograms = {url: {} for url in self.urls}
+        self.e2e_latency_last_histograms: Dict[str, Histogram] = {
+            url: Histogram() for url in self.urls
+        }
+        self.e2e_latency_diff_histograms: Dict[str, Histogram] = {
+            url: Histogram() for url in self.urls
+        }
+        self.time_to_first_token_last_histograms: Dict[str, Histogram] = {
+            url: Histogram() for url in self.urls
+        }
+        self.time_to_first_token_diff_histograms: Dict[str, Histogram] = {
+            url: Histogram() for url in self.urls
+        }
         self.monitoring = False
         self._monitor_tasks = []
 
@@ -85,9 +94,9 @@ class LeastBusy(ServerSelectionStrategy):
             response.raise_for_status()
             return await response.text()
 
-    def parse_histogram(self, content: str, pattern: str) -> dict:
+    def parse_histogram(self, content: str, pattern: str) -> Histogram:
         matches = re.findall(pattern, content, re.MULTILINE)
-        histogram = {}
+        histogram = Histogram()
 
         for line in matches[:-1]:
             match = re.search(LeastBusy.bucket_pattern, line, re.IGNORECASE)
@@ -103,14 +112,11 @@ class LeastBusy(ServerSelectionStrategy):
 
     @staticmethod
     def update_histogram(
-        new_histogram: dict, last_histogram: dict, diff_histogram: dict
+        new_histogram: Histogram, last_histogram: Histogram, diff_histogram: Histogram
     ):
-        new_diff_histogram = {}
+        new_diff_histogram = Histogram()
         if last_histogram:
-            for key in last_histogram:
-                new_diff_histogram[key] = new_histogram.get(
-                    key, 0
-                ) - last_histogram.get(key, 0)
+            new_diff_histogram = new_histogram - last_histogram
 
         last_histogram.update(new_histogram)
         diff_histogram.update(new_diff_histogram)
@@ -139,8 +145,8 @@ class LeastBusy(ServerSelectionStrategy):
             new_histogram = self.parse_histogram(content, pattern)
             LeastBusy.update_histogram(
                 new_histogram,
-                last_histograms.setdefault(url, {}),
-                diff_histograms.setdefault(url, {}),
+                last_histograms.setdefault(url, Histogram()),
+                diff_histograms.setdefault(url, Histogram()),
             )
 
     async def _monitor_server(self, url: str, interval: int) -> None:
