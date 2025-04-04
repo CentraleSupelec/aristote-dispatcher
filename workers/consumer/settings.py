@@ -1,18 +1,16 @@
 import json
 import logging
-from typing import Literal
+from typing import Literal, Optional
 
-from pydantic import Field
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings
 
 from .vllm_server import VLLMServer
 
 
 class Settings(BaseSettings):
-    AVG_TOKEN_THRESHOLD: int = Field(default=7)
     LOG_LEVEL: int = Field(default=logging.INFO)
     MODEL: str = Field(default=None)
-    NB_USER_THRESHOLD: int = Field(default=10)
     RABBITMQ_HOST: str = Field(default="rabbitmq")
     RABBITMQ_PASSWORD: str = Field(default="guest")
     RABBITMQ_USER: str = Field(default="guest")
@@ -23,8 +21,8 @@ class Settings(BaseSettings):
     DEFAULT_VLLM_SERVERS: str = Field(default=None, alias="VLLM_SERVERS")
     MAX_VLLM_CONNECTION_ATTEMPTS: int = Field(default=100)
     INITIAL_METRCIS_WAIT: int = Field(default=5)
-    NB_REQUESTS_IN_QUEUE_THRESHOLD: int = Field(default=5)
     ROUTING_STRATEGY: Literal["least-busy", "round-robin"] = Field(default=None)
+    TIME_TO_FIRST_TOKEN_THRESHOLD: Optional[float] = None
 
     @property
     def VLLM_SERVERS(self):  # pylint: disable=invalid-name
@@ -44,6 +42,16 @@ class Settings(BaseSettings):
     @property
     def RABBITMQ_URL(self):  # pylint: disable=invalid-name
         return f"amqp://{self.RABBITMQ_USER}:{self.RABBITMQ_PASSWORD}@{self.RABBITMQ_HOST}:{self.RABBITMQ_PORT}/"
+
+    @model_validator(mode="after")
+    def validate_threshold(self):
+        if self.ROUTING_STRATEGY == "least-busy":
+            if self.TIME_TO_FIRST_TOKEN_THRESHOLD is None:
+                self.TIME_TO_FIRST_TOKEN_THRESHOLD = 0.1
+        else:
+            # Ignore threshold for round-robin
+            self.TIME_TO_FIRST_TOKEN_THRESHOLD = None
+        return self
 
 
 settings = Settings()

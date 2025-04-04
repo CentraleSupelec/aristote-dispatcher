@@ -17,6 +17,7 @@ RABBITMQ_URL = settings.RABBITMQ_URL
 ROUTING_STRATEGY = settings.ROUTING_STRATEGY
 LEAST_BUSY = "least-busy"
 ROUND_ROBIN = "round-robin"
+TIME_TO_FIRST_TOKEN_THRESHOLD = settings.TIME_TO_FIRST_TOKEN_THRESHOLD
 
 shutdown_signal = asyncio.Event()
 
@@ -45,7 +46,7 @@ if __name__ == "__main__":
     logging.info("Starting consumer")
 
     if ROUTING_STRATEGY == LEAST_BUSY:
-        strategy = LeastBusy(VLLM_SERVERS)
+        strategy = LeastBusy(VLLM_SERVERS, TIME_TO_FIRST_TOKEN_THRESHOLD)
     elif ROUTING_STRATEGY == ROUND_ROBIN:
         strategy = RoundRobin(VLLM_SERVERS)
     else:

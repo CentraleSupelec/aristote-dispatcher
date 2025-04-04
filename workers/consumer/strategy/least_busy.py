@@ -1,11 +1,13 @@
 import asyncio
 import logging
+import random
 import re
 from math import inf
 from typing import List
 
 import aiohttp
 
+from ..exceptions import NoSuitableVllm
 from ..vllm_server import VLLMServer
 from .server_selection_strategy import ServerSelectionStrategy
 
@@ -14,6 +16,19 @@ class LeastBusy(ServerSelectionStrategy):
     e2e_latency_pattern = r"^vllm:e2e_request_latency_seconds_bucket.*$"
     time_to_first_token_pattern = r"^vllm:time_to_first_token_seconds_bucket.*$"
     bucket_pattern = r'le="([\d+.inf]+)".*? (\d+\.\d+)'
+
+    def __init__(self, servers: List[VLLMServer], threshold: float) -> None:
+        super().__init__(servers)
+        self.urls = [server.url for server in servers]
+        # The whole monitoring process only cares about urls, not complete server object,
+        # which are less handy to use as dictionnary keys (i.e to hash)
+        self.threshold = threshold
+        self.e2e_latency_last_histograms = {url: {} for url in self.urls}
+        self.e2e_latency_diff_histograms = {url: {} for url in self.urls}
+        self.time_to_first_token_last_histograms = {url: {} for url in self.urls}
+        self.time_to_first_token_diff_histograms = {url: {} for url in self.urls}
+        self.monitoring = False
+        self._monitor_tasks = []
 
     @staticmethod
     def get_percentile(histogram: dict, percentile: float = 0.95) -> tuple[int, float]:
@@ -44,33 +59,25 @@ class LeastBusy(ServerSelectionStrategy):
 
     @staticmethod
     def business_score(
-        e2e_bucket: tuple[int, float], tft_bucket: tuple[int, float]
+        e2e_bucket: tuple[int, float],  # pylint: disable=unused-argument
+        tft_bucket: tuple[int, float],
     ) -> float:
         """
         both buckets have the shape (bucket_index, bucket_value)
         as returned by the get_percentile function
         """
-        # TODO: define a score based on e2e time and time to first token time
-        return 0.0
+        # for now we only consider the 95% time to first token bucket as score
+        return tft_bucket[1]
 
     @staticmethod
-    def least_busy(scores: dict) -> str:
+    def least_busy(scores: dict, threshold: float) -> str:
         """
         scores is a dict of shape {url: score} for each server
         """
-        return min(scores, key=lambda x: scores[x])
-
-    def __init__(self, servers: List[VLLMServer]) -> None:
-        super().__init__(servers)
-        self.urls = [server.url for server in servers]
-        # The whole monitoring process only cares about urls, not complete server object,
-        # which are less handy to use as dictionnary keys (i.e to hash)
-        self.e2e_latency_last_histograms = {url: {} for url in self.urls}
-        self.e2e_latency_diff_histograms = {url: {} for url in self.urls}
-        self.time_to_first_token_last_histograms = {url: {} for url in self.urls}
-        self.time_to_first_token_diff_histograms = {url: {} for url in self.urls}
-        self.monitoring = False
-        self._monitor_tasks = []
+        candidates = [url for url, score in scores.items() if score < threshold]
+        if not candidates:
+            return ""
+        return random.choice(candidates)
 
     @staticmethod
     async def fetch_metrics(session: aiohttp.ClientSession, url: str) -> str:
@@ -173,10 +180,9 @@ class LeastBusy(ServerSelectionStrategy):
             return
 
         self.monitoring = False
-        tasks = getattr(self, "_monitor_tasks", [])
-        for task in tasks:
+        for task in self._monitor_tasks:
             task.cancel()
-        await asyncio.gather(*tasks, return_exceptions=True)
+        await asyncio.gather(*self._monitor_tasks, return_exceptions=True)
         logging.debug("Monitoring stopped for all servers.")
 
     def choose_server(self) -> VLLMServer:
@@ -187,12 +193,13 @@ class LeastBusy(ServerSelectionStrategy):
             tft_histogram = self.time_to_first_token_diff_histograms[url]
             tft_bucket_95 = LeastBusy.get_percentile(tft_histogram)
             scores[url] = LeastBusy.business_score(e2e_bucket_95, tft_bucket_95)
-        url_least_busy = LeastBusy.least_busy(scores)
+        url_least_busy = LeastBusy.least_busy(scores, self.threshold)
         # Only at choose time, we find back the server object corresponding to the chosen url,
         # because that's what the abstract class declared (more straightforward for the consumer)
         for server in self.servers:
             if server.url == url_least_busy:
                 return server
-        return None
-        # Shouldn't happen since url_least_busy is one of self.urls,
+        raise NoSuitableVllm()
+        # Can only happen when least_busy returns an empty string.
+        # Otherwise, url_least_busy is one of self.urls,
         # which itself is built from self.servers
