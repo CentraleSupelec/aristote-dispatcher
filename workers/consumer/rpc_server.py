@@ -9,44 +9,21 @@ from aio_pika.abc import (
     AbstractQueue,
 )
 
-from .exceptions import UnknownStrategy
 from .settings import settings
-from .strategy.least_busy import LeastBusy
-from .strategy.round_robin import RoundRobin
+from .strategy.server_selection_strategy import ServerSelectionStrategy
 
 # === Set constants ===
 
 MODEL = settings.MODEL
 
-RABBITMQ_URL = settings.RABBITMQ_URL
-
-AVG_TOKEN_THRESHOLD = settings.AVG_TOKEN_THRESHOLD
-NB_USER_THRESHOLD = settings.NB_USER_THRESHOLD
-NB_REQUESTS_IN_QUEUE_THRESHOLD = settings.NB_REQUESTS_IN_QUEUE_THRESHOLD
-
-RPC_RECONNECT_ATTEMPTS = settings.RPC_RECONNECT_ATTEMPTS
-WAIT_FOR_LLM_DELAY = 1
-
-VLLM_SERVERS = settings.VLLM_SERVERS
-
-ROUTING_STRATEGY = settings.ROUTING_STRATEGY
-LEAST_BUSY = "least_busy"
-ROUND_ROBIN = "round-robin"
-
 
 class RPCServer:
-    def __init__(self, url: str) -> None:
+    def __init__(self, url: str, strategy: ServerSelectionStrategy) -> None:
         self.url = url
+        self.strategy = strategy
         self.connection: AbstractConnection = None
         self.channel: AbstractChannel = None
         self.queue: AbstractQueue = None
-        self.strategy = None
-        if ROUTING_STRATEGY == LEAST_BUSY:
-            self.strategy = LeastBusy(VLLM_SERVERS)
-        elif ROUTING_STRATEGY == ROUND_ROBIN:
-            self.strategy = RoundRobin(VLLM_SERVERS)
-        else:
-            raise UnknownStrategy(ROUTING_STRATEGY)
 
     async def first_connect(self) -> None:
         logging.debug("Connecting consumer to RabbitMQ...")
@@ -128,6 +105,3 @@ class RPCServer:
             if not self.connection.is_closed and not self.channel.is_closed:
                 return True
         return False
-
-
-rpc_server = RPCServer(url=RABBITMQ_URL)

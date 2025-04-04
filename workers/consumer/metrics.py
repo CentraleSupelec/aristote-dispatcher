@@ -1,9 +1,6 @@
 import asyncio
 import logging
-import re
-from math import inf
-from time import time
-from typing import List, Tuple
+from typing import List
 
 from httpx import AsyncClient
 
@@ -23,106 +20,6 @@ async def ping_server(vllm_server: VLLMServer) -> None:
     async with AsyncClient(base_url=vllm_server.url) as http_client:
         response = await http_client.get("/metrics/")
         response.raise_for_status()
-
-
-def tokens_per_s(
-    tokens_total: float,
-    last_generation_tokens_total: float,
-    timestamp: float,
-    last_update_timestamp: float,
-) -> float:
-    time_diff = timestamp - last_update_timestamp
-    token_diff = tokens_total - last_generation_tokens_total
-    if token_diff > 0:
-        return token_diff / time_diff
-    return 0.0
-
-
-def update_throughput(
-    content: str, pattern: str, vllm_server: VLLMServer, throughput_metrics: dict
-) -> float:
-    timestamp = time()
-    tokens_total = float(
-        re.search(pattern, content, re.MULTILINE).group(0).split(" ")[1]
-    )
-
-    if throughput_metrics[vllm_server.url]["first_update"]:
-        tokens_per_second = 0.0
-        throughput_metrics[vllm_server.url]["first_update"] = False
-    else:
-        last_timestamp = throughput_metrics[vllm_server.url]["last_update_timestamp"]
-        last_tokens_total = throughput_metrics[vllm_server.url][
-            "last_generation_tokens_total"
-        ]
-        tokens_per_second = tokens_per_s(
-            tokens_total, last_tokens_total, timestamp, last_timestamp
-        )
-
-    throughput_metrics[vllm_server.url]["last_generation_tokens_total"] = tokens_total
-    throughput_metrics[vllm_server.url]["last_update_timestamp"] = timestamp
-
-    return tokens_per_second
-
-
-async def update_metrics(
-    vllm_server: VLLMServer, throughput_metrics: dict
-) -> Tuple[float, float, float, VLLMServer]:
-
-    async with AsyncClient(base_url=vllm_server.url) as http_client:
-        response = await http_client.get("/metrics/")
-        response.raise_for_status()
-
-    content = response.text
-
-    generation_tokens_total = r"^vllm:generation_tokens_total.*$"
-    throughput = r"^vllm:avg_generation_throughput_toks_per_s.*$"
-    num_requests_running = r"^vllm:num_requests_running.*$"
-    num_requests_waiting = r"^vllm:num_requests_waiting.*$"
-
-    current_nb_users = float(
-        re.search(num_requests_running, content, re.MULTILINE).group(0).split(" ")[1]
-    )
-    current_nb_requests_in_queue = float(
-        re.search(num_requests_waiting, content, re.MULTILINE).group(0).split(" ")[1]
-    )
-
-    version_sub_0_7 = re.search(throughput, content, re.MULTILINE)
-    # vllm versions < 0.7 expose the throughput metric. If it's there, we use it
-    if version_sub_0_7:
-        tokens_per_second = version_sub_0_7.group(0).split(" ")[1]
-    # otherwise we compute it by hand based on total tokens and time elapsed
-    else:
-        tokens_per_second = update_throughput(
-            content, generation_tokens_total, vllm_server, throughput_metrics
-        )
-
-    current_avg_token = (
-        tokens_per_second / current_nb_users if current_nb_users else inf
-    )
-
-    logging.debug(
-        " > [Metrics for %s] Tokens per second: %s", vllm_server.url, tokens_per_second
-    )
-    logging.debug(
-        " > [Metrics for %s] Running requests: %s", vllm_server.url, current_nb_users
-    )
-    logging.debug(
-        " > [Metrics for %s] Waiting requests: %s",
-        vllm_server.url,
-        current_nb_requests_in_queue,
-    )
-    logging.debug(
-        " > [Metrics for %s] Average token per user: %s",
-        vllm_server.url,
-        current_avg_token,
-    )
-
-    return (
-        current_avg_token,
-        current_nb_users,
-        current_nb_requests_in_queue,
-        vllm_server,
-    )
 
 
 async def wait_for_vllms(vllm_servers: List[VLLMServer]) -> None:

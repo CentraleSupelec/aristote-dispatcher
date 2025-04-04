@@ -4,7 +4,7 @@ from ..vllm_server import VLLMServer
 from .server_selection_strategy import ServerSelectionStrategy
 
 
-class RoundRobin(ServerSelectionStrategy):
+class RoundRobin(ServerSelectionStrategy):  # pylint: disable=too-few-public-methods
 
     def __init__(self, servers: List[VLLMServer]) -> None:
         super().__init__(servers)

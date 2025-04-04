@@ -1,12 +1,13 @@
 from aiohttp import web
 
-from .rpc_server import rpc_server
+from .rpc_server import RPCServer
 from .settings import settings
 
 
 class Prober:
-    def __init__(self):
+    def __init__(self, rpc_server: RPCServer):
         self.app = web.Application()
+        self.rpc_server = rpc_server
         self.app.router.add_get("/health", self.handle_health_check)
         self.app.router.add_get("/ready", self.handle_ready_check)
         self.runner = web.AppRunner(self.app)
@@ -28,9 +29,6 @@ class Prober:
 
     async def handle_ready_check(self):
         # Consumer is ready when it is connected to RabbitMQ
-        if rpc_server.check_connection():
+        if self.rpc_server.check_connection():
             return web.Response(text="OK", status=200)
         return web.Response(text="NOK", status=503)
-
-
-prober = Prober()

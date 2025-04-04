@@ -15,3 +15,9 @@ class ServerSelectionStrategy(ABC):
     @abstractmethod
     def choose_server(self) -> VLLMServer:
         pass
+
+    async def monitor(self, interval: int = 10) -> None:
+        pass
+
+    async def stop_monitor(self) -> None:
+        pass
