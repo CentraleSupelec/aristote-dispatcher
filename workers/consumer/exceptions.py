@@ -18,5 +18,5 @@ class NoSuitableVllm(Exception):
 
 class UnknownStrategy(Exception):
     def __init__(self, passed_strategy):
-        message = f'"{passed_strategy}" not recognized; strategy must be either round-robin or less-busy'
+        message = f'"{passed_strategy}" not recognized; strategy must be either round-robin or least_busy'
         super().__init__(message)

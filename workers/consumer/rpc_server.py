@@ -1,6 +1,5 @@
 import json
 import logging
-from typing import List
 
 from aio_pika import DeliveryMode, Message, connect_robust
 from aio_pika.abc import (
@@ -10,38 +9,22 @@ from aio_pika.abc import (
     AbstractQueue,
 )
 
-from .exceptions import NoSuitableVllm, UnknownStrategy
-from .metrics import DEFAULT_RETRY, stream_update_metrics
+from .exceptions import NoSuitableVllm
 from .settings import settings
-from .vllm_server import VLLMServer
+from .strategy.server_selection_strategy import ServerSelectionStrategy
 
 # === Set constants ===
 
 MODEL = settings.MODEL
 
-RABBITMQ_URL = settings.RABBITMQ_URL
-
-AVG_TOKEN_THRESHOLD = settings.AVG_TOKEN_THRESHOLD
-NB_USER_THRESHOLD = settings.NB_USER_THRESHOLD
-NB_REQUESTS_IN_QUEUE_THRESHOLD = settings.NB_REQUESTS_IN_QUEUE_THRESHOLD
-
-RPC_RECONNECT_ATTEMPTS = settings.RPC_RECONNECT_ATTEMPTS
-WAIT_FOR_LLM_DELAY = 1
-
-VLLM_SERVERS = settings.VLLM_SERVERS
-
-ROUTING_STRATEGY = settings.ROUTING_STRATEGY
-LESS_BUSY = "less-busy"
-ROUND_ROBIN = "round-robin"
-
 
 class RPCServer:
-    def __init__(self, url: str) -> None:
+    def __init__(self, url: str, strategy: ServerSelectionStrategy) -> None:
         self.url = url
+        self.strategy = strategy
         self.connection: AbstractConnection = None
         self.channel: AbstractChannel = None
         self.queue: AbstractQueue = None
-        self.round_robin_idx = 0
 
     async def first_connect(self) -> None:
         logging.debug("Connecting consumer to RabbitMQ...")
@@ -97,42 +80,14 @@ class RPCServer:
                 self.channel = None
                 logging.info("RPC disconnected")
 
-    async def find_first_available_server(
-        self, vllm_servers: List[VLLMServer], retry: int = DEFAULT_RETRY
-    ) -> VLLMServer:
-        async for (
-            current_avg_token,
-            current_nb_users,
-            current_nb_requests_in_queue,
-            vllm_server,
-            tasks,
-        ) in stream_update_metrics(vllm_servers, retry):
-            if current_nb_requests_in_queue <= NB_REQUESTS_IN_QUEUE_THRESHOLD and (
-                current_avg_token >= AVG_TOKEN_THRESHOLD
-                or current_nb_users <= NB_USER_THRESHOLD
-            ):
-                for task in tasks:
-                    if not task.done():
-                        task.cancel()
-                return vllm_server
-
-        raise NoSuitableVllm()
-
     async def on_message_callback(self, message: AbstractIncomingMessage):
         logging.debug("Message consumed on queue %s", MODEL)
 
-        if ROUTING_STRATEGY == LESS_BUSY:
-            vllm_server = await self.find_first_available_server(VLLM_SERVERS)
-        elif (
-            ROUTING_STRATEGY == ROUND_ROBIN
-        ):  # elif for clarity but it's really an else, since ROUTING_STRATEGY is enforced to be either LESS_BUSY or ROUND_ROBIN
-            vllm_server = VLLM_SERVERS[self.round_robin_idx]
-            self.round_robin_idx = (self.round_robin_idx + 1) % len(VLLM_SERVERS)
-        else:
-            raise UnknownStrategy(ROUTING_STRATEGY)
-
-        llm_params = {"llmUrl": vllm_server.url, "llmToken": vllm_server.token}
-
+        try:
+            vllm_server = self.strategy.choose_server()
+            llm_params = {"llmUrl": vllm_server.url, "llmToken": vllm_server.token}
+        except NoSuitableVllm:
+            llm_params = {"llmUrl": "None", "llmToken": "None"}
         try:
             await self.channel.default_exchange.publish(
                 Message(
@@ -152,6 +107,3 @@ class RPCServer:
             if not self.connection.is_closed and not self.channel.is_closed:
                 return True
         return False
-
-
-rpc_server = RPCServer(url=RABBITMQ_URL)

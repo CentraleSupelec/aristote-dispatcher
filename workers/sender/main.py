@@ -165,6 +165,15 @@ async def proxy(request: Request, call_next):
     llm_url = llm_params["llmUrl"]
     llm_token = llm_params["llmToken"]
 
+    if llm_url == "None":
+        return JSONResponse(
+            content={
+                "object": "error",
+                "error": f"{requested_model} is busy, try again later",
+            },
+            status_code=503,
+        )
+
     headers = {}
     if llm_token:
         headers["Authorization"] = f"Bearer {llm_token}"
