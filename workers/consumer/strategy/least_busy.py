@@ -56,6 +56,9 @@ class LeastBusy(ServerSelectionStrategy):
             (0.3, 0.0), (0.5, 1.0), (0.8, 4.0), ...
         ]
         """
+        if not histogram:
+            return None
+
         sorted_buckets = sorted(histogram.items())
         total_requests = sorted_buckets[-1][1]
         percentile_count = percentile * total_requests
@@ -76,7 +79,7 @@ class LeastBusy(ServerSelectionStrategy):
         as returned by the get_percentile function
         """
         # for now we only consider the 95% time to first token bucket as score
-        return tft_bucket[1]
+        return tft_bucket[1] if tft_bucket else -1
 
     @staticmethod
     def least_busy(scores: dict, threshold: float) -> str:
@@ -98,15 +101,18 @@ class LeastBusy(ServerSelectionStrategy):
         matches = re.findall(pattern, content, re.MULTILINE)
         histogram = Histogram()
 
-        for line in matches[:-1]:
-            match = re.search(LeastBusy.bucket_pattern, line, re.IGNORECASE)
-            if match:
-                histogram[float(match.group(1))] = float(match.group(2))
+        # when no request have ever been recorded, vllm does not expose empty histograms
+        # so matches can be None
+        if matches:
+            for line in matches[:-1]:
+                match = re.search(LeastBusy.bucket_pattern, line, re.IGNORECASE)
+                if match:
+                    histogram[float(match.group(1))] = float(match.group(2))
 
-        # last bucket is treated separately because of key '+Inf' instead of number
-        match = re.search(LeastBusy.bucket_pattern, matches[-1], re.IGNORECASE)
-        if match:
-            histogram[inf] = float(match.group(2))
+            # last bucket is treated separately because of key '+Inf' instead of number
+            match = re.search(LeastBusy.bucket_pattern, matches[-1], re.IGNORECASE)
+            if match:
+                histogram[inf] = float(match.group(2))
 
         return histogram
 
@@ -167,6 +173,11 @@ class LeastBusy(ServerSelectionStrategy):
                 except asyncio.CancelledError:
                     logging.debug("Monitoring task cancelled for %s", url)
                     break
+                # Since we only wait for one server to start consuming (cf metrics.py),
+                # it is possible that some servers are not (yet) reachable,
+                # which leads to aiohttp.ClientConnectorError
+                except aiohttp.ClientConnectorError:
+                    continue
 
     async def monitor(self, interval: int = 10) -> None:
         if self.monitoring:
@@ -193,19 +204,27 @@ class LeastBusy(ServerSelectionStrategy):
 
     def choose_server(self) -> VLLMServer:
         scores = {}
+        url_least_busy = None
         for url in self.urls:
             e2e_histogram = self.e2e_latency_diff_histograms[url]
             e2e_bucket_95 = LeastBusy.get_percentile(e2e_histogram)
             tft_histogram = self.time_to_first_token_diff_histograms[url]
             tft_bucket_95 = LeastBusy.get_percentile(tft_histogram)
             scores[url] = LeastBusy.business_score(e2e_bucket_95, tft_bucket_95)
-        url_least_busy = LeastBusy.least_busy(scores, self.threshold)
+            if scores[url] == -1:
+                url_least_busy = url
+        # edge case: when a server has never received any request,
+        # histograms are not exposed and so business score is -1
+        # but then it needs a request for us to start effectively monitoring, so we prioritize it
+        if not url_least_busy:
+            url_least_busy = LeastBusy.least_busy(scores, self.threshold)
         # Only at choose time, we find back the server object corresponding to the chosen url,
         # because that's what the abstract class declared (more straightforward for the consumer)
         for server in self.servers:
             if server.url == url_least_busy:
                 return server
         raise NoSuitableVllm()
-        # Can only happen when least_busy returns an empty string.
+        # Can only happen when least_busy returns an empty string,
+        # which happens when no suitable server has been found.
         # Otherwise, url_least_busy is one of self.urls,
         # which itself is built from self.servers

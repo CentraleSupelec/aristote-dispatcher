@@ -9,6 +9,7 @@ from aio_pika.abc import (
     AbstractQueue,
 )
 
+from .exceptions import NoSuitableVllm
 from .settings import settings
 from .strategy.server_selection_strategy import ServerSelectionStrategy
 
@@ -82,10 +83,11 @@ class RPCServer:
     async def on_message_callback(self, message: AbstractIncomingMessage):
         logging.debug("Message consumed on queue %s", MODEL)
 
-        vllm_server = self.strategy.choose_server()
-
-        llm_params = {"llmUrl": vllm_server.url, "llmToken": vllm_server.token}
-
+        try:
+            vllm_server = self.strategy.choose_server()
+            llm_params = {"llmUrl": vllm_server.url, "llmToken": vllm_server.token}
+        except NoSuitableVllm:
+            llm_params = {"llmUrl": "None", "llmToken": "None"}
         try:
             await self.channel.default_exchange.publish(
                 Message(
