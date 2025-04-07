@@ -1,43 +1,34 @@
-import asyncio
-import logging
-import random
-import re
-from math import inf
-from typing import Dict, List
+from __future__ import annotations
 
-import aiohttp
+import random
+from typing import List
 
 from ..exceptions import NoSuitableVllm
 from ..vllm_server import VLLMServer
-from .histogram import Histogram
-from .server_selection_strategy import ServerSelectionStrategy
+from .metrics_based_strategy import MetricsBasedStrategy
+from .metrics_tracker import MetricsTracker
 
 
-class LeastBusy(ServerSelectionStrategy):
-    e2e_latency_pattern = r"^vllm:e2e_request_latency_seconds_bucket.*$"
-    time_to_first_token_pattern = r"^vllm:time_to_first_token_seconds_bucket.*$"
-    bucket_pattern = r'le="([\d+.inf]+)".*? (\d+\.\d+)'
+class LeastBusy(MetricsBasedStrategy):
 
-    def __init__(self, servers: List[VLLMServer], threshold: float) -> None:
-        super().__init__(servers)
-        self.urls = [server.url for server in servers]
-        # The whole monitoring process only cares about urls, not complete server object,
-        # which are less handy to use as dictionnary keys (i.e to hash)
+    def __init__(
+        self, servers: List[VLLMServer], threshold: float, tracker: MetricsTracker
+    ) -> None:
+        super().__init__(servers, tracker)
         self.threshold = threshold
-        self.e2e_latency_last_histograms: Dict[str, Histogram] = {
-            url: Histogram() for url in self.urls
-        }
-        self.e2e_latency_diff_histograms: Dict[str, Histogram] = {
-            url: Histogram() for url in self.urls
-        }
-        self.time_to_first_token_last_histograms: Dict[str, Histogram] = {
-            url: Histogram() for url in self.urls
-        }
-        self.time_to_first_token_diff_histograms: Dict[str, Histogram] = {
-            url: Histogram() for url in self.urls
-        }
-        self.monitoring = False
-        self._monitor_tasks = []
+
+    # MetricsBasedStrategy requires child classes to implement this
+    # That's to make sure a strategy based on metrics has a metrics tracker
+    @property
+    def tracker(self) -> MetricsTracker:
+        return self._tracker
+
+    # This allows to setup the async monitoring task at instanciation time
+    @classmethod
+    async def create(cls, servers: List[VLLMServer], threshold: float) -> LeastBusy:
+        tracker = MetricsTracker([s.url for s in servers])
+        await tracker.monitor()
+        return cls(servers, threshold, tracker)
 
     @staticmethod
     def get_percentile(histogram: dict, percentile: float = 0.95) -> tuple[int, float]:
@@ -91,124 +82,13 @@ class LeastBusy(ServerSelectionStrategy):
             return ""
         return random.choice(candidates)
 
-    @staticmethod
-    async def fetch_metrics(session: aiohttp.ClientSession, url: str) -> str:
-        async with session.get(f"{url}/metrics") as response:
-            response.raise_for_status()
-            return await response.text()
-
-    def parse_histogram(self, content: str, pattern: str) -> Histogram:
-        matches = re.findall(pattern, content, re.MULTILINE)
-        histogram = Histogram()
-
-        # when no request have ever been recorded, vllm does not expose empty histograms
-        # so matches can be None
-        if matches:
-            for line in matches[:-1]:
-                match = re.search(LeastBusy.bucket_pattern, line, re.IGNORECASE)
-                if match:
-                    histogram[float(match.group(1))] = float(match.group(2))
-
-            # last bucket is treated separately because of key '+Inf' instead of number
-            match = re.search(LeastBusy.bucket_pattern, matches[-1], re.IGNORECASE)
-            if match:
-                histogram[inf] = float(match.group(2))
-
-        return histogram
-
-    @staticmethod
-    def update_histogram(
-        new_histogram: Histogram, last_histogram: Histogram, diff_histogram: Histogram
-    ):
-        new_diff_histogram = Histogram()
-        if last_histogram:
-            new_diff_histogram = new_histogram - last_histogram
-
-        last_histogram.update(new_histogram)
-        diff_histogram.update(new_diff_histogram)
-
-    async def update_all_metrics_for_server(
-        self, session: aiohttp.ClientSession, url: str
-    ) -> None:
-        """Fetch metrics once and update histograms for different patterns."""
-        content = await LeastBusy.fetch_metrics(session, url)
-        if not content:
-            return
-
-        # Process histograms for different patterns
-        for pattern, last_histograms, diff_histograms in [
-            (
-                LeastBusy.e2e_latency_pattern,
-                self.e2e_latency_last_histograms,
-                self.e2e_latency_diff_histograms,
-            ),
-            (
-                LeastBusy.time_to_first_token_pattern,
-                self.time_to_first_token_last_histograms,
-                self.time_to_first_token_diff_histograms,
-            ),
-        ]:
-            new_histogram = self.parse_histogram(content, pattern)
-            LeastBusy.update_histogram(
-                new_histogram,
-                last_histograms.setdefault(url, Histogram()),
-                diff_histograms.setdefault(url, Histogram()),
-            )
-
-    async def _monitor_server(self, url: str, interval: int) -> None:
-        async with aiohttp.ClientSession() as session:
-            while self.monitoring:
-                try:
-                    await self.update_all_metrics_for_server(session, url)
-                    logging.debug("Metrics updated for %s", url)
-                    logging.debug(
-                        "e2e latency histogram: %s",
-                        self.e2e_latency_diff_histograms[url],
-                    )
-                    logging.debug(
-                        "time-to-first-token histogram: %s",
-                        self.time_to_first_token_diff_histograms[url],
-                    )
-                    await asyncio.sleep(interval)
-                except asyncio.CancelledError:
-                    logging.debug("Monitoring task cancelled for %s", url)
-                    break
-                # Since we only wait for one server to start consuming (cf metrics.py),
-                # it is possible that some servers are not (yet) reachable,
-                # which leads to aiohttp.ClientConnectorError
-                except aiohttp.ClientConnectorError:
-                    continue
-
-    async def monitor(self, interval: int = 10) -> None:
-        if self.monitoring:
-            logging.debug("Monitoring is already running.")
-            return
-
-        self.monitoring = True
-        self._monitor_tasks = [
-            asyncio.create_task(self._monitor_server(url, interval))
-            for url in self.urls
-        ]
-        logging.debug("Started monitoring for %s servers", len(self.urls))
-
-    async def stop_monitor(self) -> None:
-        if not self.monitoring:
-            logging.debug("Monitoring is not running.")
-            return
-
-        self.monitoring = False
-        for task in self._monitor_tasks:
-            task.cancel()
-        await asyncio.gather(*self._monitor_tasks, return_exceptions=True)
-        logging.debug("Monitoring stopped for all servers.")
-
     def choose_server(self) -> VLLMServer:
         scores = {}
         url_least_busy = None
-        for url in self.urls:
-            e2e_histogram = self.e2e_latency_diff_histograms[url]
+        for url in self.tracker.urls:
+            e2e_histogram = self.tracker.e2e_latency_diff_histograms[url]
             e2e_bucket_95 = LeastBusy.get_percentile(e2e_histogram)
-            tft_histogram = self.time_to_first_token_diff_histograms[url]
+            tft_histogram = self.tracker.time_to_first_token_diff_histograms[url]
             tft_bucket_95 = LeastBusy.get_percentile(tft_histogram)
             scores[url] = LeastBusy.business_score(e2e_bucket_95, tft_bucket_95)
             if scores[url] == -1:

@@ -8,6 +8,7 @@ from .probes import Prober
 from .rpc_server import RPCServer
 from .settings import settings
 from .strategy.least_busy import LeastBusy
+from .strategy.metrics_based_strategy import MetricsBasedStrategy
 from .strategy.round_robin import RoundRobin
 from .strategy.server_selection_strategy import ServerSelectionStrategy
 
@@ -25,7 +26,6 @@ shutdown_signal = asyncio.Event()
 async def main_consumer(p_strategy: ServerSelectionStrategy, p_rpc_server: RPCServer):
     await wait_for_vllms(VLLM_SERVERS)
 
-    await p_strategy.monitor()
     await p_rpc_server.first_connect()
 
     # Consumer is running until shutdown signal is received
@@ -34,7 +34,10 @@ async def main_consumer(p_strategy: ServerSelectionStrategy, p_rpc_server: RPCSe
     await shutdown_signal.wait()
 
     await p_rpc_server.close()
-    await p_strategy.stop_monitor()
+
+    # we need to explicitly stop monitoring
+    if isinstance(p_strategy, MetricsBasedStrategy):
+        await p_strategy.tracker.stop_monitor()
 
 
 def shutdown():
@@ -45,8 +48,13 @@ def shutdown():
 if __name__ == "__main__":
     logging.info("Starting consumer")
 
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+
     if ROUTING_STRATEGY == LEAST_BUSY:
-        strategy = LeastBusy(VLLM_SERVERS, TIME_TO_FIRST_TOKEN_THRESHOLD)
+        strategy = loop.run_until_complete(
+            LeastBusy.create(VLLM_SERVERS, TIME_TO_FIRST_TOKEN_THRESHOLD)
+        )  # monitoring starts via the LeastBusy create method, no need to explicitly start it here
     elif ROUTING_STRATEGY == ROUND_ROBIN:
         strategy = RoundRobin(VLLM_SERVERS)
     else:
@@ -55,9 +63,6 @@ if __name__ == "__main__":
     rpc_server = RPCServer(RABBITMQ_URL, strategy)
 
     prober = Prober(rpc_server)
-
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
 
     for sig in (signal.SIGINT, signal.SIGTERM):
         loop.add_signal_handler(sig, shutdown)

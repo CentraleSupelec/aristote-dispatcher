@@ -4,7 +4,7 @@ from typing import List
 from ..vllm_server import VLLMServer
 
 
-class ServerSelectionStrategy(ABC):
+class ServerSelectionStrategy(ABC): # pylint: disable=too-few-public-methods
     """
     Abstract base class for server selection strategies.
     """
@@ -14,10 +14,4 @@ class ServerSelectionStrategy(ABC):
 
     @abstractmethod
     def choose_server(self) -> VLLMServer:
-        pass
-
-    async def monitor(self, interval: int = 10) -> None:
-        pass
-
-    async def stop_monitor(self) -> None:
         pass
