@@ -56,7 +56,9 @@ class LeastBusy(MetricsBasedStrategy):
         for i, (bucket, count) in enumerate(sorted_buckets):
             if count >= percentile_count:
                 return (i, bucket)
-        raise Exception(f"Couldn't find {100*percentile}th percentile for histogram: {histogram}")
+        raise Exception(
+            f"Couldn't find {100*percentile}th percentile for histogram: {histogram}"
+        )
         # Should never be reached, since count holds total_requests during last iteration,
         # which will always be bigger than percentile*total_requests for percentile<1
 

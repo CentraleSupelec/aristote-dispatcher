@@ -49,7 +49,9 @@ class MetricsTracker:
         if not content:
             return
 
-        new_histogram = Histogram.parse(content, MetricsTracker.time_to_first_token_pattern)
+        new_histogram = Histogram.parse(
+            content, MetricsTracker.time_to_first_token_pattern
+        )
         MetricsTracker.update_histogram(
             new_histogram,
             self.time_to_first_token_last_histograms.setdefault(url, Histogram()),
