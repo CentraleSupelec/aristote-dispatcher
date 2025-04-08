@@ -10,19 +10,12 @@ from .histogram import Histogram
 class MetricsTracker:
     # We can imagine different strategies based on different metrics
     # In this case, these patterns would be passed in the constructor
-    e2e_latency_pattern = r"^vllm:e2e_request_latency_seconds_bucket.*$"
     time_to_first_token_pattern = r"^vllm:time_to_first_token_seconds_bucket.*$"
 
     def __init__(self, urls: List[str]) -> None:
         self.urls = urls
         # The whole monitoring process only cares about urls, not complete server object,
         # which are less handy to use as dictionnary keys (i.e to hash)
-        self.e2e_latency_last_histograms: Dict[str, Histogram] = {
-            url: Histogram() for url in self.urls
-        }
-        self.e2e_latency_diff_histograms: Dict[str, Histogram] = {
-            url: Histogram() for url in self.urls
-        }
         self.time_to_first_token_last_histograms: Dict[str, Histogram] = {
             url: Histogram() for url in self.urls
         }
@@ -56,25 +49,12 @@ class MetricsTracker:
         if not content:
             return
 
-        # Process histograms for different patterns
-        for pattern, last_histograms, diff_histograms in [
-            (
-                MetricsTracker.e2e_latency_pattern,
-                self.e2e_latency_last_histograms,
-                self.e2e_latency_diff_histograms,
-            ),
-            (
-                MetricsTracker.time_to_first_token_pattern,
-                self.time_to_first_token_last_histograms,
-                self.time_to_first_token_diff_histograms,
-            ),
-        ]:
-            new_histogram = Histogram.parse(content, pattern)
-            MetricsTracker.update_histogram(
-                new_histogram,
-                last_histograms.setdefault(url, Histogram()),
-                diff_histograms.setdefault(url, Histogram()),
-            )
+        new_histogram = Histogram.parse(content, MetricsTracker.time_to_first_token_pattern)
+        MetricsTracker.update_histogram(
+            new_histogram,
+            self.time_to_first_token_last_histograms.setdefault(url, Histogram()),
+            self.time_to_first_token_diff_histograms.setdefault(url, Histogram()),
+        )
 
     async def _monitor_server(self, url: str, interval: int) -> None:
         async with aiohttp.ClientSession() as session:
@@ -82,10 +62,6 @@ class MetricsTracker:
                 try:
                     await self.update_all_metrics_for_server(session, url)
                     logging.debug("Metrics updated for %s", url)
-                    logging.debug(
-                        "e2e latency histogram: %s",
-                        self.e2e_latency_diff_histograms[url],
-                    )
                     logging.debug(
                         "time-to-first-token histogram: %s",
                         self.time_to_first_token_diff_histograms[url],

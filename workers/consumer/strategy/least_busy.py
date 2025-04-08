@@ -62,7 +62,6 @@ class LeastBusy(MetricsBasedStrategy):
 
     @staticmethod
     def business_score(
-        e2e_bucket: tuple[int, float],  # pylint: disable=unused-argument
         tft_bucket: tuple[int, float],
     ) -> float:
         """
@@ -86,11 +85,9 @@ class LeastBusy(MetricsBasedStrategy):
         scores = {}
         url_least_busy = None
         for url in self.tracker.urls:
-            e2e_histogram = self.tracker.e2e_latency_diff_histograms[url]
-            e2e_bucket_95 = LeastBusy.get_percentile(e2e_histogram)
             tft_histogram = self.tracker.time_to_first_token_diff_histograms[url]
             tft_bucket_95 = LeastBusy.get_percentile(tft_histogram)
-            scores[url] = LeastBusy.business_score(e2e_bucket_95, tft_bucket_95)
+            scores[url] = LeastBusy.business_score(tft_bucket_95)
             if scores[url] == -1:
                 url_least_busy = url
         # edge case: when a server has never received any request,
