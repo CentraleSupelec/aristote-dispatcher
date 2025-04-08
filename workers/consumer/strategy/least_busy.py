@@ -98,13 +98,7 @@ class LeastBusy(MetricsBasedStrategy):
         # but then it needs a request for us to start effectively monitoring, so we prioritize it
         if not url_least_busy:
             url_least_busy = LeastBusy.least_busy(scores, self.threshold)
-        # Only at choose time, we find back the server object corresponding to the chosen url,
-        # because that's what the abstract class declared (more straightforward for the consumer)
         for server in self.servers:
             if server.url == url_least_busy:
                 return server
         raise NoSuitableVllm()
-        # Can only happen when least_busy returns an empty string,
-        # which happens when no suitable server has been found.
-        # Otherwise, url_least_busy is one of self.urls,
-        # which itself is built from self.servers
