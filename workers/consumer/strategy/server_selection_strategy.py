@@ -4,7 +4,7 @@ from typing import List
 from ..vllm_server import VLLMServer
 
 
-class ServerSelectionStrategy(ABC): # pylint: disable=too-few-public-methods
+class ServerSelectionStrategy(ABC):  # pylint: disable=too-few-public-methods
     """
     Abstract base class for server selection strategies.
     """
