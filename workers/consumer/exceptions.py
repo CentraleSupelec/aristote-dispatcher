@@ -18,5 +18,13 @@ class NoSuitableVllm(Exception):
 
 class UnknownStrategy(Exception):
     def __init__(self, passed_strategy):
-        message = f'"{passed_strategy}" not recognized; strategy must be either round-robin or least_busy'
+        message = f'"{passed_strategy}" not recognized; strategy must be either round-robin or least-busy'
+        super().__init__(message)
+
+
+class PercentileComputationError(Exception):
+    def __init__(self, percentile, histogram):
+        message = (
+            f"Couldn't find {100*percentile}th percentile for histogram: {histogram}"
+        )
         super().__init__(message)

@@ -3,7 +3,7 @@ from __future__ import annotations
 import random
 from typing import List
 
-from ..exceptions import NoSuitableVllm
+from ..exceptions import NoSuitableVllm, PercentileComputationError
 from ..vllm_server import VLLMServer
 from .metrics_based_strategy import MetricsBasedStrategy
 from .metrics_tracker import MetricsTracker
@@ -56,9 +56,7 @@ class LeastBusy(MetricsBasedStrategy):
         for i, (bucket, count) in enumerate(sorted_buckets):
             if count >= percentile_count:
                 return (i, bucket)
-        raise Exception(
-            f"Couldn't find {100*percentile}th percentile for histogram: {histogram}"
-        )
+        raise PercentileComputationError(percentile, histogram)
         # Should never be reached, since count holds total_requests during last iteration,
         # which will always be bigger than percentile*total_requests for percentile<1
 
