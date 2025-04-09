@@ -12,12 +12,21 @@ class MetricsTracker:
     # In this case, these patterns would be passed in the constructor
     time_to_first_token_pattern = r"^vllm:time_to_first_token_seconds_bucket.*$"
 
-    def __init__(self, urls: List[str]) -> None:
+    def __init__(
+        self, urls: List[str], refresh_rate: float, window_width: float
+    ) -> None:
         self.urls = urls
         # The whole monitoring process only cares about urls, not complete server object,
         # which are less handy to use as dictionnary keys (i.e to hash)
+        self.refresh_rate = refresh_rate
+        self.window_width = window_width
+        self.timer = 0
         self.time_to_first_token_last_histograms: Dict[str, Histogram] = {
-            url: Histogram() for url in self.urls
+            url: {
+                time_key: Histogram()
+                for time_key in range(0, window_width, refresh_rate)
+            }
+            for url in self.urls
         }
         self.time_to_first_token_diff_histograms: Dict[str, Histogram] = {
             url: Histogram() for url in self.urls
@@ -37,12 +46,15 @@ class MetricsTracker:
     ):
         new_diff_histogram = Histogram()
         new_diff_histogram = new_histogram - last_histogram
+        # At first iteration, if the server was already up when the consumer was
+        # launched, the new diff histogram will contain the histogram describing
+        # the whole vllm instance lifespan, instead of the last <window_width> seconds
 
         last_histogram.update(new_histogram)
         diff_histogram.update(new_diff_histogram)
 
     async def update_all_metrics_for_server(
-        self, session: aiohttp.ClientSession, url: str
+        self, session: aiohttp.ClientSession, url: str, time_key: int
     ) -> None:
         """Fetch metrics once and update histograms for different patterns."""
         content = await MetricsTracker.fetch_metrics(session, url)
@@ -54,21 +66,22 @@ class MetricsTracker:
         )
         MetricsTracker.update_histogram(
             new_histogram,
-            self.time_to_first_token_last_histograms.setdefault(url, Histogram()),
-            self.time_to_first_token_diff_histograms.setdefault(url, Histogram()),
+            self.time_to_first_token_last_histograms[url][time_key],
+            self.time_to_first_token_diff_histograms[url],
         )
 
-    async def _monitor_server(self, url: str, interval: int) -> None:
+    async def _monitor_server(self, url: str) -> None:
         async with aiohttp.ClientSession() as session:
             while self.monitoring:
                 try:
-                    await self.update_all_metrics_for_server(session, url)
+                    await self.update_all_metrics_for_server(session, url, self.timer)
                     logging.debug("Metrics updated for %s", url)
                     logging.debug(
                         "time-to-first-token histogram: %s",
                         self.time_to_first_token_diff_histograms[url],
                     )
-                    await asyncio.sleep(interval)
+                    self.timer = (self.timer + self.refresh_rate) % self.window_width
+                    await asyncio.sleep(self.refresh_rate)
                 except asyncio.CancelledError:
                     logging.debug("Monitoring task cancelled for %s", url)
                     break
@@ -78,15 +91,14 @@ class MetricsTracker:
                 except aiohttp.ClientConnectorError:
                     continue
 
-    async def monitor(self, interval: int = 10) -> None:
+    async def monitor(self) -> None:
         if self.monitoring:
             logging.debug("Monitoring is already running.")
             return
 
         self.monitoring = True
         self._monitor_tasks = [
-            asyncio.create_task(self._monitor_server(url, interval))
-            for url in self.urls
+            asyncio.create_task(self._monitor_server(url)) for url in self.urls
         ]
         logging.debug("Started monitoring for %s servers", len(self.urls))
 

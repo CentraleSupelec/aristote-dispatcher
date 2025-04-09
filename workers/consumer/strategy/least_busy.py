@@ -25,8 +25,14 @@ class LeastBusy(MetricsBasedStrategy):
 
     # This allows to setup the async monitoring task at instanciation time
     @classmethod
-    async def create(cls, servers: List[VLLMServer], threshold: float) -> LeastBusy:
-        tracker = MetricsTracker([s.url for s in servers])
+    async def create(
+        cls,
+        servers: List[VLLMServer],
+        threshold: float,
+        refresh_rate: float,
+        window_width: float,
+    ) -> LeastBusy:
+        tracker = MetricsTracker([s.url for s in servers], refresh_rate, window_width)
         await tracker.monitor()
         return cls(servers, threshold, tracker)
 

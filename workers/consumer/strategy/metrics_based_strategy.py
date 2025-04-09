@@ -23,7 +23,11 @@ class MetricsBasedStrategy(ServerSelectionStrategy):
     @classmethod
     @abstractmethod
     async def create(
-        cls, servers: List[VLLMServer], threshold: float
+        cls,
+        servers: List[VLLMServer],
+        threshold: float,
+        refresh_rate: float,
+        window_width: float,
     ) -> "MetricsBasedStrategy":
         """
         Subclasses must implement this async method to handle async setup

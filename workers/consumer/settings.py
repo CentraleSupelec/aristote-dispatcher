@@ -23,6 +23,8 @@ class Settings(BaseSettings):
     INITIAL_METRCIS_WAIT: int = Field(default=5)
     ROUTING_STRATEGY: Literal["least-busy", "round-robin"] = Field(default=None)
     TIME_TO_FIRST_TOKEN_THRESHOLD: Optional[float] = None
+    METRICS_REFRESH_RATE: Optional[float] = None
+    METRICS_WINDOW_WIDTH: Optional[float] = None
 
     @property
     def VLLM_SERVERS(self):  # pylint: disable=invalid-name
@@ -47,10 +49,29 @@ class Settings(BaseSettings):
     def validate_threshold(self):
         if self.ROUTING_STRATEGY == "least-busy":
             if self.TIME_TO_FIRST_TOKEN_THRESHOLD is None:
-                self.TIME_TO_FIRST_TOKEN_THRESHOLD = 0.1
+                self.TIME_TO_FIRST_TOKEN_THRESHOLD = 0.1  # pylint: disable=invalid-name
         else:
             # Ignore threshold for round-robin
             self.TIME_TO_FIRST_TOKEN_THRESHOLD = None
+        return self
+
+    @model_validator(mode="after")
+    def validate_refresh_rate(self):
+        if self.ROUTING_STRATEGY == "least-busy":
+            if self.METRICS_REFRESH_RATE is None:
+                self.METRICS_REFRESH_RATE = 2  # pylint: disable=invalid-name
+            if self.METRICS_WINDOW_WIDTH is None:
+                self.METRICS_WINDOW_WIDTH = 10  # pylint: disable=invalid-name
+            if self.METRICS_WINDOW_WIDTH % self.METRICS_REFRESH_RATE != 0:
+                raise ValueError(
+                    "METRICS_WINDOW_WIDTH must be a multiple of METRICS_REFRESH_RATE. "
+                    f"Passed values: METRICS_WINDOW_WIDTH={self.METRICS_WINDOW_WIDTH}; "
+                    f"METRICS_REFRESH_RATE={self.METRICS_REFRESH_RATE}"
+                )
+        else:
+            # Ignore these metrics-related variables for strategies that do not rely on monitoring
+            self.METRICS_REFRESH_RATE = None
+            self.METRICS_WINDOW_WIDTH = None
         return self
 
 
