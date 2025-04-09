@@ -76,9 +76,11 @@ class LeastBusy(MetricsBasedStrategy):
         """
         scores is a dict of shape {url: score} for each server
         """
-        candidates = [url for url, score in scores.items() if score < threshold]
-        if not candidates:
+        filtered = {k: v for k, v in scores.items() if v <= threshold}
+        if not filtered:
             return ""
+        min_value = min(filtered.values())
+        candidates = [k for k, v in filtered.items() if v == min_value]
         return random.choice(candidates)
 
     def choose_server(self) -> VLLMServer:
