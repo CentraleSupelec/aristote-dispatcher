@@ -166,13 +166,14 @@ async def proxy(request: Request, call_next):
     llm_token = llm_params["llmToken"]
 
     if llm_url == "None":
-        return JSONResponse(
-            content={
-                "object": "error",
-                "error": f"{requested_model} is busy, try again later",
-            },
-            status_code=503,
-        )
+        response_content = {
+            "error": f"{requested_model} is busy, try again later",
+        }
+        match client_type:
+            case "chat":
+                return JSONResponse(content=response_content, status_code=200)
+            case _:
+                return JSONResponse(content=response_content, status_code=503)
 
     headers = {}
     if llm_token:
