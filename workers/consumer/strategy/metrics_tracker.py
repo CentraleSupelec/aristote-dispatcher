@@ -20,7 +20,7 @@ class MetricsTracker:
         # which are less handy to use as dictionnary keys (i.e to hash)
         self.refresh_rate = refresh_rate
         self.refresh_count_per_window = refresh_count_per_window
-        self.window_index = 0
+        self.window_indexes: Dict[str:int] = {url: 0 for url in self.urls}
         self.time_to_first_token_last_histograms: Dict[str, List[Histogram]] = {
             url: [Histogram()] * refresh_count_per_window for url in self.urls
         }
@@ -71,15 +71,15 @@ class MetricsTracker:
             while self.monitoring:
                 try:
                     await self.update_all_metrics_for_server(
-                        session, url, self.window_index
+                        session, url, self.window_indexes[url]
                     )
                     logging.debug("Metrics updated for %s", url)
                     logging.debug(
                         "time-to-first-token histogram: %s",
                         self.time_to_first_token_diff_histograms[url],
                     )
-                    self.window_index = (
-                        self.window_index + 1
+                    self.window_indexes[url] = (
+                        self.window_indexes[url] + 1
                     ) % self.refresh_count_per_window
                     await asyncio.sleep(self.refresh_rate)
                 except asyncio.CancelledError:
