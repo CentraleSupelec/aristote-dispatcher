@@ -22,7 +22,8 @@ class MetricsTracker:
         self.refresh_count_per_window = refresh_count_per_window
         self.window_indexes: Dict[str:int] = {url: 0 for url in self.urls}
         self.time_to_first_token_last_histograms: Dict[str, List[Histogram]] = {
-            url: [Histogram()] * refresh_count_per_window for url in self.urls
+            url: [Histogram() for _ in range(refresh_count_per_window)]
+            for url in self.urls
         }
         self.time_to_first_token_diff_histograms: Dict[str, Histogram] = {
             url: Histogram() for url in self.urls
