@@ -30,9 +30,11 @@ class LeastBusy(MetricsBasedStrategy):
         servers: List[VLLMServer],
         threshold: float,
         refresh_rate: int,
-        window_width: int,
+        refresh_count_per_window: int,
     ) -> LeastBusy:
-        tracker = MetricsTracker([s.url for s in servers], refresh_rate, window_width)
+        tracker = MetricsTracker(
+            [s.url for s in servers], refresh_rate, refresh_count_per_window
+        )
         await tracker.monitor()
         return cls(servers, threshold, tracker)
 

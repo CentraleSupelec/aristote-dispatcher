@@ -20,7 +20,7 @@ LEAST_BUSY = "least-busy"
 ROUND_ROBIN = "round-robin"
 TIME_TO_FIRST_TOKEN_THRESHOLD = settings.TIME_TO_FIRST_TOKEN_THRESHOLD
 METRICS_REFRESH_RATE = settings.METRICS_REFRESH_RATE
-METRICS_WINDOW_WIDTH = settings.METRICS_WINDOW_WIDTH
+REFRESH_COUNT_PER_WINDOW = settings.REFRESH_COUNT_PER_WINDOW
 
 shutdown_signal = asyncio.Event()
 
@@ -59,7 +59,7 @@ if __name__ == "__main__":
                 VLLM_SERVERS,
                 TIME_TO_FIRST_TOKEN_THRESHOLD,
                 METRICS_REFRESH_RATE,
-                METRICS_WINDOW_WIDTH,
+                REFRESH_COUNT_PER_WINDOW,
             )
         )  # monitoring starts via the LeastBusy create method, no need to explicitly start it here
     elif ROUTING_STRATEGY == ROUND_ROBIN:

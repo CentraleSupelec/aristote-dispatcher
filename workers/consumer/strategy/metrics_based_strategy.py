@@ -27,7 +27,7 @@ class MetricsBasedStrategy(ServerSelectionStrategy):
         servers: List[VLLMServer],
         threshold: float,
         refresh_rate: int,
-        window_width: int,
+        refresh_count_per_window: int,
     ) -> "MetricsBasedStrategy":
         """
         Subclasses must implement this async method to handle async setup

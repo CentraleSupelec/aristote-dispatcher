@@ -23,8 +23,9 @@ class Settings(BaseSettings):
     INITIAL_METRCIS_WAIT: int = Field(default=5)
     ROUTING_STRATEGY: Literal["least-busy", "round-robin"] = Field(default=None)
     TIME_TO_FIRST_TOKEN_THRESHOLD: Optional[float] = None
-    METRICS_REFRESH_RATE: int = Field(gt=0, default=2)
-    REFRESH_PER_WINDOW: int = Field(gt=0, default=5)
+    METRICS_REFRESH_RATE: int = Field(ge=1, default=5)
+    REFRESH_COUNT_PER_WINDOW: int = Field(ge=1, default=24)
+    # A time window would then be of duration METRICS_REFRESH_RATE * REFRESH_COUNT_PER_WINDOW
 
     @property
     def VLLM_SERVERS(self):  # pylint: disable=invalid-name
@@ -44,10 +45,6 @@ class Settings(BaseSettings):
     @property
     def RABBITMQ_URL(self):  # pylint: disable=invalid-name
         return f"amqp://{self.RABBITMQ_USER}:{self.RABBITMQ_PASSWORD}@{self.RABBITMQ_HOST}:{self.RABBITMQ_PORT}/"
-
-    @property
-    def METRICS_WINDOW_WIDTH(self):  # pylint: disable=invalid-name
-        return self.METRICS_REFRESH_RATE * self.REFRESH_PER_WINDOW
 
     @model_validator(mode="after")
     def validate_threshold(self):
