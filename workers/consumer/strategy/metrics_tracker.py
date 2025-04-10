@@ -12,9 +12,7 @@ class MetricsTracker:
     # In this case, these patterns would be passed in the constructor
     time_to_first_token_pattern = r"^vllm:time_to_first_token_seconds_bucket.*$"
 
-    def __init__(
-        self, urls: List[str], refresh_rate: float, window_width: float
-    ) -> None:
+    def __init__(self, urls: List[str], refresh_rate: int, window_width: int) -> None:
         self.urls = urls
         # The whole monitoring process only cares about urls, not complete server object,
         # which are less handy to use as dictionnary keys (i.e to hash)
