@@ -23,6 +23,9 @@ class Settings(BaseSettings):
     INITIAL_METRCIS_WAIT: int = Field(default=5)
     ROUTING_STRATEGY: Literal["least-busy", "round-robin"] = Field(default=None)
     TIME_TO_FIRST_TOKEN_THRESHOLD: Optional[float] = None
+    METRICS_REFRESH_RATE: int = Field(ge=1, default=5)
+    REFRESH_COUNT_PER_WINDOW: int = Field(ge=1, default=24)
+    # A time window would then be of duration METRICS_REFRESH_RATE * REFRESH_COUNT_PER_WINDOW
 
     @property
     def VLLM_SERVERS(self):  # pylint: disable=invalid-name
@@ -47,7 +50,7 @@ class Settings(BaseSettings):
     def validate_threshold(self):
         if self.ROUTING_STRATEGY == "least-busy":
             if self.TIME_TO_FIRST_TOKEN_THRESHOLD is None:
-                self.TIME_TO_FIRST_TOKEN_THRESHOLD = 0.1
+                self.TIME_TO_FIRST_TOKEN_THRESHOLD = 0.1  # pylint: disable=invalid-name
         else:
             # Ignore threshold for round-robin
             self.TIME_TO_FIRST_TOKEN_THRESHOLD = None
