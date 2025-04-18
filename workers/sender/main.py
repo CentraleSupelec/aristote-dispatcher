@@ -175,7 +175,13 @@ async def proxy(request: Request, call_next):
             case _:
                 return JSONResponse(content=response_content, status_code=503)
 
-    headers = {}
+    content_type = request.headers.get("content-type")
+
+    if content_type is None:
+        content_type = "application/json"
+
+    headers = {"content-type": content_type}
+
     if llm_token:
         headers["Authorization"] = f"Bearer {llm_token}"
     logging.info("LLM Url received : %s", llm_url)
