@@ -81,6 +81,21 @@ async def models():
         status_code=200
     )
 
+@app.get("/v1/models/{model_id}")
+async def model(model_id):
+    model_data = await get_model_by_id(settings, model_id)
+    if model_data is not None:
+        return JSONResponse(
+            content={
+                "object": "error",
+                "message": f"model {model_id} not found",
+                "type": "NotFoundError",
+            },
+            status_code=404
+        )
+
+    return JSONResponse(model_data, status_code=200)
+
 @app.middleware("http")
 async def proxy(request: Request, call_next):
     start = time.localtime()
