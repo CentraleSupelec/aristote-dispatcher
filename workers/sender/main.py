@@ -74,12 +74,9 @@ async def authorize(request: Request):
 @app.get("/v1/models")
 async def models():
     return JSONResponse(
-        content={
-            "object": "list",
-            "data": await get_models(settings)
-        },
-        status_code=200
+        content={"object": "list", "data": await get_models(settings)}, status_code=200
     )
+
 
 @app.get("/v1/models/{model_id}")
 async def model(model_id):
@@ -91,10 +88,11 @@ async def model(model_id):
                 "message": f"model {model_id} not found",
                 "type": "NotFoundError",
             },
-            status_code=404
+            status_code=404,
         )
 
     return JSONResponse(model_data, status_code=200)
+
 
 @app.middleware("http")
 async def proxy(request: Request, call_next):
