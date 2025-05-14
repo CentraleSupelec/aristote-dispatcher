@@ -81,7 +81,7 @@ async def models():
 @app.get("/v1/models/{model_id}")
 async def model(model_id):
     model_data = await get_model_by_id(settings, model_id)
-    if model_data is not None:
+    if model_data is None:
         return JSONResponse(
             content={
                 "object": "error",
