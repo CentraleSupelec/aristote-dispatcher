@@ -73,8 +73,13 @@ async def authorize(request: Request):
 
 @app.get("/v1/models")
 async def models():
-    return JSONResponse(content=await get_models(settings), status_code=200)
-
+    return JSONResponse(
+        content={
+            "object": "list",
+            "data": await get_models(settings)
+        },
+        status_code=200
+    )
 
 @app.middleware("http")
 async def proxy(request: Request, call_next):
