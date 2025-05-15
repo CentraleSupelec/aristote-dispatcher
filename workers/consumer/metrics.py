@@ -18,7 +18,10 @@ INITIAL_METRCIS_WAIT = settings.INITIAL_METRCIS_WAIT
 
 async def ping_server(vllm_server: VLLMServer) -> None:
     async with AsyncClient(base_url=vllm_server.url) as http_client:
-        response = await http_client.get("/metrics/")
+        headers = {"Content-Type": "application/json", "Accept": "application/json"}
+        if vllm_server.token:
+            headers["Authorization"] = f"Bearer {vllm_server.token}"
+        response = await http_client.get("/v1/models", headers=headers)
         response.raise_for_status()
 
 
