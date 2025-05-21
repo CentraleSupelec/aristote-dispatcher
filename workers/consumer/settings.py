@@ -20,7 +20,7 @@ class Settings(BaseSettings):
     PROBE_PORT: int = Field(default=8081)
     DEFAULT_VLLM_SERVERS: str = Field(default=None, alias="VLLM_SERVERS")
     MAX_VLLM_CONNECTION_ATTEMPTS: int = Field(default=100)
-    INITIAL_METRCIS_WAIT: int = Field(default=5)
+    INITIAL_METRICS_WAIT: int = Field(default=5)
     ROUTING_STRATEGY: Literal["least-busy", "round-robin"] = Field(default=None)
     TIME_TO_FIRST_TOKEN_THRESHOLD: Optional[float] = None
     METRICS_REFRESH_RATE: int = Field(ge=1, default=5)

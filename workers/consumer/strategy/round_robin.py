@@ -10,7 +10,7 @@ class RoundRobin(ServerSelectionStrategy):  # pylint: disable=too-few-public-met
         super().__init__(servers)
         self.round_robin_idx = 0
 
-    def choose_server(self) -> VLLMServer:
+    def choose_server(self) -> (VLLMServer, None):
         choice = self.servers[self.round_robin_idx]
         self.round_robin_idx = (self.round_robin_idx + 1) % len(self.servers)
-        return choice
+        return choice, None

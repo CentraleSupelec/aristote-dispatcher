@@ -10,10 +10,10 @@ from .vllm_server import VLLMServer
 
 DEFAULT_RETRY = 5
 
-# Consumer will wait for MAX_INITIAL_METRICS_RETRIES*INITIAL_METRCIS_WAIT seconds
+# Consumer will wait for MAX_INITIAL_METRICS_RETRIES*INITIAL_METRICS_WAIT seconds
 # Before crashing if vllm is not ready
 MAX_INITIAL_METRICS_RETRIES = settings.MAX_VLLM_CONNECTION_ATTEMPTS
-INITIAL_METRCIS_WAIT = settings.INITIAL_METRCIS_WAIT
+INITIAL_METRICS_WAIT = settings.INITIAL_METRICS_WAIT
 
 
 async def ping_server(vllm_server: VLLMServer) -> None:
@@ -42,7 +42,7 @@ async def wait_for_vllms(vllm_servers: List[VLLMServer]) -> None:
     else:
         logging.error(
             "No vllm ready after %ss",
-            INITIAL_METRCIS_WAIT * MAX_INITIAL_METRICS_RETRIES,
+            INITIAL_METRICS_WAIT * MAX_INITIAL_METRICS_RETRIES,
         )
         raise task.exception()
 
@@ -63,6 +63,6 @@ async def wait_for_vllm(vllm_server: VLLMServer) -> None:
                 MAX_INITIAL_METRICS_RETRIES,
                 e,
             )
-            await asyncio.sleep(INITIAL_METRCIS_WAIT)
+            await asyncio.sleep(INITIAL_METRICS_WAIT)
     else:
-        raise VllmNotReadyException(INITIAL_METRCIS_WAIT * MAX_INITIAL_METRICS_RETRIES)
+        raise VllmNotReadyException(INITIAL_METRICS_WAIT * MAX_INITIAL_METRICS_RETRIES)
