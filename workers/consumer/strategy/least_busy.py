@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import random
-from typing import List
+from typing import Dict, List
 
 from ..exceptions import NoSuitableVllm, PercentileComputationError
 from ..vllm_server import VLLMServer
@@ -11,11 +11,8 @@ from .metrics_tracker import MetricsTracker
 
 class LeastBusy(MetricsBasedStrategy):
 
-    def __init__(
-        self, servers: List[VLLMServer], threshold: float, tracker: MetricsTracker
-    ) -> None:
+    def __init__(self, servers: List[VLLMServer], tracker: MetricsTracker) -> None:
         super().__init__(servers, tracker)
-        self.threshold = threshold
 
     # MetricsBasedStrategy requires child classes to implement this
     # That's to make sure a strategy based on metrics has a metrics tracker
@@ -28,7 +25,6 @@ class LeastBusy(MetricsBasedStrategy):
     async def create(
         cls,
         servers: List[VLLMServer],
-        threshold: float,
         refresh_rate: int,
         refresh_count_per_window: int,
     ) -> LeastBusy:
@@ -36,7 +32,7 @@ class LeastBusy(MetricsBasedStrategy):
             [s.url for s in servers], refresh_rate, refresh_count_per_window
         )
         await tracker.monitor()
-        return cls(servers, threshold, tracker)
+        return cls(servers, tracker)
 
     @staticmethod
     def get_percentile(histogram: dict, percentile: float = 0.95) -> tuple[int, float]:
@@ -80,32 +76,35 @@ class LeastBusy(MetricsBasedStrategy):
         return tft_bucket[1] if tft_bucket else -1
 
     @staticmethod
-    def least_busy(scores: dict, threshold: float) -> str:
+    def least_busy(scores: Dict[str, float]) -> (str, float):
         """
         scores is a dict of shape {url: score} for each server
         """
-        filtered = {k: v for k, v in scores.items() if v <= threshold}
-        if not filtered:
-            return ""
-        min_value = min(filtered.values())
-        candidates = [k for k, v in filtered.items() if v == min_value]
-        return random.choice(candidates)
+        min_value = min(scores.values())
+        candidates = [k for k, v in scores.items() if v == min_value]
+        return random.choice(candidates), min_value
 
-    def choose_server(self) -> VLLMServer:
+    def choose_server(self) -> (VLLMServer, float | None):
         scores = {}
         url_least_busy = None
+        current_time_to_first_token = None
+
         for url in self.tracker.urls:
             tft_histogram = self.tracker.time_to_first_token_diff_histograms[url]
             tft_bucket_95 = LeastBusy.get_percentile(tft_histogram)
             scores[url] = LeastBusy.business_score(tft_bucket_95)
+
+            # edge case: when a server has never received any request,
+            # histograms are not exposed and so business score is -1
+            # but then it needs a request for us to start effectively monitoring, so we prioritize it
             if scores[url] == -1:
                 url_least_busy = url
-        # edge case: when a server has never received any request,
-        # histograms are not exposed and so business score is -1
-        # but then it needs a request for us to start effectively monitoring, so we prioritize it
+
         if not url_least_busy:
-            url_least_busy = LeastBusy.least_busy(scores, self.threshold)
+            url_least_busy, current_time_to_first_token = LeastBusy.least_busy(scores)
+
         for server in self.servers:
             if server.url == url_least_busy:
-                return server
+                return server, current_time_to_first_token
+
         raise NoSuitableVllm()

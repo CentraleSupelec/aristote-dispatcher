@@ -25,7 +25,6 @@ class MetricsBasedStrategy(ServerSelectionStrategy):
     async def create(
         cls,
         servers: List[VLLMServer],
-        threshold: float,
         refresh_rate: int,
         refresh_count_per_window: int,
     ) -> "MetricsBasedStrategy":

@@ -5,6 +5,7 @@ import signal
 from .exceptions import UnknownStrategy
 from .metrics import wait_for_vllms
 from .probes import Prober
+from .quality_of_service_policy.warning_log_policy import WarningLogPolicy
 from .rpc_server import RPCServer
 from .settings import settings
 from .strategy.least_busy import LeastBusy
@@ -57,7 +58,6 @@ if __name__ == "__main__":
         strategy = loop.run_until_complete(
             LeastBusy.create(
                 VLLM_SERVERS,
-                TIME_TO_FIRST_TOKEN_THRESHOLD,
                 METRICS_REFRESH_RATE,
                 REFRESH_COUNT_PER_WINDOW,
             )
@@ -67,7 +67,9 @@ if __name__ == "__main__":
     else:
         raise UnknownStrategy(ROUTING_STRATEGY)
 
-    rpc_server = RPCServer(RABBITMQ_URL, strategy)
+    quality_of_service_policy = WarningLogPolicy(TIME_TO_FIRST_TOKEN_THRESHOLD)
+
+    rpc_server = RPCServer(RABBITMQ_URL, strategy, quality_of_service_policy)
 
     prober = Prober(rpc_server)
 
