@@ -171,7 +171,7 @@ async def proxy(request: Request, call_next):
 
     if isinstance(rpc_response, int):
         response_content = {"error": "Too many people using the service"}
-        match client_type:
+        match str(client_type):
             case "chat":
                 return JSONResponse(content=response_content, status_code=200)
             case _:
@@ -187,7 +187,7 @@ async def proxy(request: Request, call_next):
         response_content = {
             "error": f"{requested_model} is busy, try again later",
         }
-        match client_type:
+        match str(client_type):
             case "chat":
                 return JSONResponse(content=response_content, status_code=200)
             case _:
@@ -198,11 +198,16 @@ async def proxy(request: Request, call_next):
     if content_type is None:
         content_type = "application/json"
 
-    headers = {"content-type": content_type}
-
+    headers = {"Content-Type": content_type}
     if llm_token:
         headers["Authorization"] = f"Bearer {llm_token}"
+
     logging.info("LLM Url received : %s", llm_url)
+
+    priority = llm_params.get("priority", None)
+    if priority is not None and isinstance(priority, int):
+        json_body["priority"] = priority
+        body = json.dumps(json_body)
 
     http_client = AsyncClient(base_url=llm_url, timeout=300.0)
     req = http_client.build_request(

@@ -22,6 +22,8 @@ class Settings(BaseSettings):
     MAX_VLLM_CONNECTION_ATTEMPTS: int = Field(default=100)
     INITIAL_METRICS_WAIT: int = Field(default=5)
     ROUTING_STRATEGY: Literal["least-busy", "round-robin"] = Field(default=None)
+    PRIORITY_HANDLER: Literal["ignore", "vllm"] = Field(default="ignore")
+    BEST_PRIORITY: int = Field(default=5)
     TIME_TO_FIRST_TOKEN_THRESHOLD: Optional[float] = None
     METRICS_REFRESH_RATE: int = Field(ge=1, default=5)
     REFRESH_COUNT_PER_WINDOW: int = Field(ge=1, default=24)

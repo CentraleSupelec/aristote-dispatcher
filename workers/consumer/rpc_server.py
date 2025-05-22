@@ -10,6 +10,7 @@ from aio_pika.abc import (
 )
 
 from .exceptions import NoSuitableVllm
+from .priority_handler import BasePriorityHandler
 from .quality_of_service_policy.warning_log_policy import WarningLogPolicy
 from .settings import settings
 from .strategy.server_selection_strategy import ServerSelectionStrategy
@@ -25,10 +26,12 @@ class RPCServer:
         url: str,
         strategy: ServerSelectionStrategy,
         quality_of_service_policy: WarningLogPolicy,
+        priority_handler: BasePriorityHandler,
     ) -> None:
         self.url = url
         self.strategy = strategy
         self.quality_of_service_policy = quality_of_service_policy
+        self.priority_handler = priority_handler
         self.connection: AbstractConnection = None
         self.channel: AbstractChannel = None
         self.queue: AbstractQueue = None
@@ -93,7 +96,10 @@ class RPCServer:
         try:
             vllm_server, performance_indicator = self.strategy.choose_server()
             self.quality_of_service_policy.apply_policy(performance_indicator)
+            priority = self.priority_handler.apply_priority(message.priority)
             llm_params = {"llmUrl": vllm_server.url, "llmToken": vllm_server.token}
+            if priority is not None and isinstance(priority, int):
+                llm_params["priority"] = priority
         except NoSuitableVllm:
             llm_params = {"llmUrl": "None", "llmToken": "None"}
         try:
