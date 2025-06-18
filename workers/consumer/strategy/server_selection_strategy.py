@@ -13,5 +13,5 @@ class ServerSelectionStrategy(ABC):  # pylint: disable=too-few-public-methods
         self.servers = servers
 
     @abstractmethod
-    def choose_server(self) -> VLLMServer:
+    def choose_server(self) -> (VLLMServer, float | None):
         pass

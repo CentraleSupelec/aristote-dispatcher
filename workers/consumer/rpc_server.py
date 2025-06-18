@@ -10,6 +10,7 @@ from aio_pika.abc import (
 )
 
 from .exceptions import NoSuitableVllm
+from .quality_of_service_policy.warning_log_policy import WarningLogPolicy
 from .settings import settings
 from .strategy.server_selection_strategy import ServerSelectionStrategy
 
@@ -19,9 +20,15 @@ MODEL = settings.MODEL
 
 
 class RPCServer:
-    def __init__(self, url: str, strategy: ServerSelectionStrategy) -> None:
+    def __init__(
+        self,
+        url: str,
+        strategy: ServerSelectionStrategy,
+        quality_of_service_policy: WarningLogPolicy,
+    ) -> None:
         self.url = url
         self.strategy = strategy
+        self.quality_of_service_policy = quality_of_service_policy
         self.connection: AbstractConnection = None
         self.channel: AbstractChannel = None
         self.queue: AbstractQueue = None
@@ -84,7 +91,8 @@ class RPCServer:
         logging.debug("Message consumed on queue %s", MODEL)
 
         try:
-            vllm_server = self.strategy.choose_server()
+            vllm_server, performance_indicator = self.strategy.choose_server()
+            self.quality_of_service_policy.apply_policy(performance_indicator)
             llm_params = {"llmUrl": vllm_server.url, "llmToken": vllm_server.token}
         except NoSuitableVllm:
             llm_params = {"llmUrl": "None", "llmToken": "None"}
