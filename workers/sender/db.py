@@ -1,100 +1,31 @@
-import logging
-from abc import ABC, abstractmethod
-
-import aiomysql
-import asyncpg
+from entities import Base
 from settings import Settings
+from sqlalchemy import create_engine
+from sqlalchemy.orm import Session, sessionmaker
 
 
-class Database(ABC):
-    def __init__(self, settings: Settings) -> None:
+class Database:
+    def __init__(self, settings: Settings):
         self.settings = settings
 
-    @abstractmethod
-    async def create_connection_pool(self):
-        return NotImplemented
+        if settings.DB_TYPE == "mysql":
+            self.db_url = (
+                f"mysql+pymysql://{settings.DB_USER}:{settings.DB_PASSWORD}@"
+                f"{settings.DB_HOST}:{settings.DB_PORT}/{settings.DB_DATABASE}"
+            )
+        elif settings.DB_TYPE == "postgresql":
+            self.db_url = (
+                f"postgresql+psycopg2://{settings.DB_USER}:{settings.DB_PASSWORD}@"
+                f"{settings.DB_HOST}:{settings.DB_PORT}/{settings.DB_DATABASE}"
+            )
+        else:
+            raise ValueError(f"Unsupported DB_TYPE: {settings.DB_TYPE}")
 
-    @abstractmethod
-    async def execute(self, mysql_query: str, postgres_query: str, *args):
-        return NotImplemented
+        self.engine = create_engine(self.db_url, echo=False)
+        self.SessionLocal = sessionmaker(bind=self.engine)
 
-    async def close(self):
-        return NotImplemented
+    def get_session(self) -> Session:
+        return self.SessionLocal()
 
-    @staticmethod
-    async def init_database(settings: Settings):
-        match settings.DB_TYPE:
-            case "mysql":
-                database = MySQLDatabase(settings)
-            case "postgresql":
-                database = PostgreSQLDatabase(settings)
-            case _:
-                raise ValueError(f"Invalid database type: {settings.DB_TYPE}")
-
-        await database.create_connection_pool()
-
-        return database
-
-
-class MySQLDatabase(Database):
-    pool: aiomysql.Pool | None = None
-
-    async def create_connection_pool(self):
-        self.pool = await aiomysql.create_pool(
-            host=self.settings.DB_HOST,
-            port=self.settings.DB_PORT,
-            user=self.settings.DB_USER,
-            password=self.settings.DB_PASSWORD,
-            db=self.settings.DB_DATABASE,
-        )
-
-    async def execute(self, mysql_query: str, postgres_query: str, *args):
-        if self.pool is None:
-            raise ValueError("Pool is not initialized")
-
-        logging.debug("Executing query %s with args %s", mysql_query, args)
-
-        async with self.pool.acquire() as connection:
-            async with connection.cursor() as cursor:
-
-                await cursor.execute(mysql_query, args)
-                result = await cursor.fetchall()
-
-                logging.debug(" [x] Result : %s", result)
-
-                return result[0]
-
-    async def close(self):
-        if self.pool is not None:
-            self.pool.close()
-            await self.pool.wait_closed()
-
-
-class PostgreSQLDatabase(Database):
-    pool: asyncpg.Pool | None = None
-
-    async def create_connection_pool(self):
-        self.pool = await asyncpg.create_pool(
-            host=self.settings.DB_HOST,
-            port=self.settings.DB_PORT,
-            user=self.settings.DB_USER,
-            password=self.settings.DB_PASSWORD,
-            database=self.settings.DB_DATABASE,
-        )
-
-    async def execute(self, mysql_query: str, postgres_query: str, *args):
-        if self.pool is None:
-            raise ValueError("Pool is not initialized")
-
-        logging.debug("Executing query %s with args %s", postgres_query, args)
-
-        async with self.pool.acquire() as connection:
-            async with connection.transaction():
-                result = await connection.fetchrow(postgres_query, *args)
-                logging.debug("Result : %s", result)
-
-                return result
-
-    async def close(self):
-        if self.pool is not None:
-            self.pool.close()
+    def close(self):
+        self.engine.dispose()

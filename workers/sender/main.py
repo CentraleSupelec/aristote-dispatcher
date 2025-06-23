@@ -3,9 +3,11 @@ import json
 import logging
 import time
 from contextlib import asynccontextmanager
+from datetime import datetime
 
 from aio_pika.exceptions import ChannelClosed
 from db import Database
+from entities import Metric, User
 from exceptions import InvalidTokenException, NoTokenException, UnauthorizedException
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, PlainTextResponse, StreamingResponse
@@ -27,9 +29,10 @@ logging.basicConfig(
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    logging.info("Opening database connection")
     global database
-    database = await Database.init_database(settings=settings)
+
+    logging.info("Opening database connection")
+    database = Database(settings)
     logging.info("Database connection opened")
 
     logging.info("Opening RPC connection")
@@ -47,7 +50,7 @@ async def lifespan(_: FastAPI):
 app = FastAPI(lifespan=lifespan)
 
 
-async def authorize(request: Request):
+def authorize(request: Request):
 
     authorization = request.headers.get("Authorization")
 
@@ -59,16 +62,19 @@ async def authorize(request: Request):
     if len(token_parts) != 2 or token_parts[0] != "Bearer":
         raise InvalidTokenException()
 
-    user = await database.execute(
-        "SELECT * FROM users WHERE token = %s",
-        "SELECT * FROM users WHERE token = $1",
-        token_parts[1],
-    )
+    with database.get_session() as session:
+        user = session.query(User).filter_by(token=token_parts[1]).first()
 
     if not user:
         raise UnauthorizedException()
 
     return user
+
+
+def save_metrics_to_db(metric: Metric):
+    with database.get_session() as session:
+        session.add(metric)
+        session.commit()
 
 
 @app.get("/v1/models")
@@ -96,8 +102,7 @@ async def model(model_id):
 
 @app.middleware("http")
 async def proxy(request: Request, call_next):
-    start = time.localtime()
-    start_hour = f"{start.tm_hour}:{start.tm_min}:{start.tm_sec}"
+    start = datetime.now()
     logging.info("Received request on path %s", request.url.path)
 
     if request.method == "GET" and request.url.path == "/health/liveness":
@@ -112,13 +117,13 @@ async def proxy(request: Request, call_next):
 
     # Authorization
     try:
-        user = await authorize(request)
+        user = authorize(request)
     except (NoTokenException, InvalidTokenException, UnauthorizedException) as e:
         return JSONResponse(status_code=e.status_code, content={"error": e.detail})
-    user_id, _, priority, threshold, client_type = user
-    threshold = 0 if threshold is None else threshold
 
-    logging.info("User %s authorized", user_id)
+    threshold = 0 if user.threshold is None else user.threshold
+
+    logging.info("User %s authorized", user.token)
 
     # Handle GET request normally
     if request.method == "GET":
@@ -153,7 +158,7 @@ async def proxy(request: Request, call_next):
         )
 
     try:
-        rpc_response = await rpc_client.call(priority, threshold, requested_model)
+        rpc_response = await rpc_client.call(user.priority, threshold, requested_model)
     except ChannelClosed:
         # the queue may have been deleted (ex: consumer does not exist anymore)
         logging.debug(
@@ -171,7 +176,7 @@ async def proxy(request: Request, call_next):
 
     if isinstance(rpc_response, int):
         response_content = {"error": "Too many people using the service"}
-        match str(client_type):
+        match str(user.client_type):
             case "chat":
                 return JSONResponse(content=response_content, status_code=200)
             case _:
@@ -187,7 +192,7 @@ async def proxy(request: Request, call_next):
         response_content = {
             "error": f"{requested_model} is busy, try again later",
         }
-        match str(client_type):
+        match str(user.client_type):
             case "chat":
                 return JSONResponse(content=response_content, status_code=200)
             case _:
@@ -217,15 +222,36 @@ async def proxy(request: Request, call_next):
     logging.info("Request ( Method: %s ; URL: %s )", request.method, request.url.path)
     logging.debug(" > Request content: %s", body)
 
+    sent_to_llm_date = datetime.now()
     res = await http_client.send(req, stream=True)
     logging.info("Proxy request sent")
+
+    body = await res.aread()
+    response_json = json.loads(body)
+    prompt_tokens = response_json.get("usage", {}).get("prompt_tokens")
+    completion_tokens = response_json.get("usage", {}).get("completion_tokens")
+
+    metric = Metric(
+        user_name=user.name,
+        model=requested_model,
+        request_date=start,
+        sent_to_llm_date=sent_to_llm_date,
+        response_date=datetime.now(),
+        prompt_tokens=prompt_tokens,
+        completion_tokens=completion_tokens,
+    )
+
     background_tasks = BackgroundTasks(
         [
             BackgroundTask(res.aclose),
             BackgroundTask(http_client.aclose),
-            BackgroundTask(logging.info, f"Finished request started at {start_hour}"),
+            BackgroundTask(logging.info, f"Finished request started at {start}"),
+            BackgroundTask(save_metrics_to_db, metric),
         ]
     )
+
     return StreamingResponse(
-        res.aiter_raw(), headers=res.headers, background=background_tasks
+        iter([body]),
+        headers=res.headers,
+        background=background_tasks,
     )
