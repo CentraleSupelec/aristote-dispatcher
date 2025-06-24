@@ -1,7 +1,8 @@
 import asyncio
 import logging
 import uuid
-from typing import MutableMapping
+from enum import Enum
+from typing import MutableMapping, Union
 
 from aio_pika import DeliveryMode, Message, connect_robust
 from aio_pika.abc import (
@@ -11,6 +12,12 @@ from aio_pika.abc import (
     AbstractQueue,
 )
 from settings import Settings
+
+
+class CallResult(Enum):
+    SUCCESS = 0
+    QUEUE_OVERLOADED = 1001
+    TIMEOUT = 1002
 
 
 class RPCClient:
@@ -73,12 +80,12 @@ class RPCClient:
 
     async def call(
         self, priority: int, threshold: int, model: str
-    ) -> AbstractIncomingMessage | int:
+    ) -> Union[AbstractIncomingMessage, CallResult]:
         model_queue = await self.channel.get_queue(name=model)
         nb_messages = model_queue.declaration_result.message_count
         logging.debug("%s messages in the model queue : %s", nb_messages, model)
         if nb_messages > threshold:
-            return 1
+            return CallResult.QUEUE_OVERLOADED
 
         logging.info("New request for model %s", model)
         correlation_id = str(uuid.uuid4())
@@ -97,9 +104,16 @@ class RPCClient:
             routing_key=model,
         )
         logging.debug("Message pushed to model queue %s", model)
-        response: AbstractIncomingMessage = await future
-        logging.info("Received URL for model %s", model)
-        return response
+        try:
+            response = await asyncio.wait_for(
+                future, timeout=self.settings.MESSAGE_TIMEOUT
+            )  # Timeout in seconds
+            logging.info("Received URL for model %s", model)
+            return response
+        except asyncio.TimeoutError:
+            self.futures.pop(correlation_id, None)  # Clean up
+            logging.warning("Timeout waiting for response from consumer")
+            return CallResult.TIMEOUT
 
     async def check_connection(self):
         if self.connection and self.channel:

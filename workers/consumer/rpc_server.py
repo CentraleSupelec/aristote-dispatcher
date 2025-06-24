@@ -9,7 +9,7 @@ from aio_pika.abc import (
     AbstractQueue,
 )
 
-from .exceptions import NoSuitableVllm
+from .exceptions import ServerNotFound
 from .priority_handler import BasePriorityHandler
 from .quality_of_service_policy.warning_log_policy import WarningLogPolicy
 from .settings import settings
@@ -48,11 +48,11 @@ class RPCServer:
                 durable=True,
                 arguments={
                     "x-expires": settings.RPC_QUEUE_EXPIRATION,
+                    "x-message-ttl": settings.RPC_MESSAGE_EXPIRATION,
                 },
             )
             await self.queue.consume(
                 self.on_message_callback,
-                no_ack=True,
             )
         except Exception as e:
             logging.error("Error connecting to RabbitMQ: %s", e)
@@ -70,6 +70,7 @@ class RPCServer:
             durable=True,
             arguments={
                 "x-expires": settings.RPC_QUEUE_EXPIRATION,
+                "x-message-ttl": settings.RPC_MESSAGE_EXPIRATION,
             },
         )
         await self.queue.consume(
@@ -95,12 +96,15 @@ class RPCServer:
 
         try:
             vllm_server, performance_indicator = self.strategy.choose_server()
-            self.quality_of_service_policy.apply_policy(performance_indicator)
             priority = self.priority_handler.apply_priority(message.priority)
+            if not self.quality_of_service_policy.apply_policy(
+                performance_indicator, message
+            ):
+                return
             llm_params = {"llmUrl": vllm_server.url, "llmToken": vllm_server.token}
             if priority is not None and isinstance(priority, int):
                 llm_params["priority"] = priority
-        except NoSuitableVllm:
+        except ServerNotFound:
             llm_params = {"llmUrl": "None", "llmToken": "None"}
         try:
             await self.channel.default_exchange.publish(
@@ -111,6 +115,7 @@ class RPCServer:
                 ),
                 routing_key=message.reply_to,
             )
+            await message.ack()
             logging.info("LLM URL for model %s sent to API", MODEL)
         except Exception as e:
             logging.error("An error occurred while publishing message: %s", e)
