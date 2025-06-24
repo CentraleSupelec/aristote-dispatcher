@@ -2,8 +2,12 @@ import asyncio
 import logging
 import signal
 
-from .exceptions import UnknownStrategy
+from .exceptions import UnknownPriorityHandler, UnknownStrategy
 from .metrics import wait_for_vllms
+from .priority_handler.ignore_priority_handler import (
+    IgnorePriorityHandler,
+)
+from .priority_handler.vllm_priority_handler import VllmPriorityHandler
 from .probes import Prober
 from .quality_of_service_policy.warning_log_policy import WarningLogPolicy
 from .rpc_server import RPCServer
@@ -19,6 +23,8 @@ RABBITMQ_URL = settings.RABBITMQ_URL
 ROUTING_STRATEGY = settings.ROUTING_STRATEGY
 LEAST_BUSY = "least-busy"
 ROUND_ROBIN = "round-robin"
+IGNORE_PRIORITY_HANDLER = "ignore"
+VLLM_PRIORITY_HANDLER = "vllm"
 TIME_TO_FIRST_TOKEN_THRESHOLD = settings.TIME_TO_FIRST_TOKEN_THRESHOLD
 METRICS_REFRESH_RATE = settings.METRICS_REFRESH_RATE
 REFRESH_COUNT_PER_WINDOW = settings.REFRESH_COUNT_PER_WINDOW
@@ -67,9 +73,21 @@ if __name__ == "__main__":
     else:
         raise UnknownStrategy(ROUTING_STRATEGY)
 
+    if settings.PRIORITY_HANDLER == IGNORE_PRIORITY_HANDLER:
+        priority_handler = IgnorePriorityHandler(settings.BEST_PRIORITY)
+    elif settings.PRIORITY_HANDLER == VLLM_PRIORITY_HANDLER:
+        priority_handler = VllmPriorityHandler(settings.BEST_PRIORITY)
+    else:
+        raise UnknownPriorityHandler(settings.PRIORITY_HANDLER)
+
     quality_of_service_policy = WarningLogPolicy(TIME_TO_FIRST_TOKEN_THRESHOLD)
 
-    rpc_server = RPCServer(RABBITMQ_URL, strategy, quality_of_service_policy)
+    rpc_server = RPCServer(
+        url=RABBITMQ_URL,
+        strategy=strategy,
+        quality_of_service_policy=quality_of_service_policy,
+        priority_handler=priority_handler,
+    )
 
     prober = Prober(rpc_server)
 
