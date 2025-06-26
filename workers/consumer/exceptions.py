@@ -22,6 +22,11 @@ class UnknownStrategy(Exception):
         super().__init__(message)
 
 
+class UnknownPriorityHandler(Exception):
+    def __init__(self, priority_handler):
+        message = f'"{priority_handler}" not recognized; priority handler must be either "ignore" or "vllm"'
+
+
 class PercentileComputationError(Exception):
     def __init__(self, percentile, histogram):
         message = (
