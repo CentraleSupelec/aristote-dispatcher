@@ -180,21 +180,15 @@ Note that, if the database is external, you will have to initialize it and popul
 
 #### Initialization
 
-mysql:
-```sql
-CREATE TABLE users (id INT NOT NULL AUTO_INCREMENT PRIMARY KEY, token VARCHAR(255), priority INT NOT NULL, threshold INT NOT NULL, client_type ENUM('chat'));
-```
+- mysql: Run the scripts in workers/migrations/mysql one by one
 
-postgresql:
-```sql
-CREATE TYPE client_type as ENUM ('chat');
-CREATE TABLE users (id SERIAL PRIMARY KEY, token VARCHAR(255), priority INT NOT NULL, threshold INT NOT NULL, client_type client_type);
-```
+- postgresql: Run the scripts in workers/migrations/postgresql one by one
+
 
 #### Insertion
 
 ```sql
-INSERT INTO users (token, priority, threshold, client_type) VALUES ('token', priority, threshold, 'client-type');
+INSERT INTO users (token, name, priority, threshold, client_type) VALUES ('token', 'name', priority, threshold, 'client-type');
 ```
 
 ### Ingress

@@ -8,8 +8,7 @@ services:
   postgres:
     image: postgres
     volumes:
-      - ./init_db/init_postgres.sql.example:/docker-entrypoint-initdb.d/init.sql
-      - db-data:/var/lib/postgresql/data
+      - postgres-data:/var/lib/postgresql/data
     environment:
       POSTGRES_USER: user
       POSTGRES_PASSWORD: password
@@ -113,4 +112,5 @@ services:
   #     VLLM_CPU_OMP_THREADS_BIND: 6
 
 volumes:
-  db-data:
+  postgres-data:
+  mysql-data:
