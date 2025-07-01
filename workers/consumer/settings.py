@@ -15,7 +15,8 @@ class Settings(BaseSettings):
     RABBITMQ_PASSWORD: str = Field(default="guest")
     RABBITMQ_USER: str = Field(default="guest")
     RABBITMQ_PORT: int = Field(default=5672)
-    RPC_QUEUE_EXPIRATION: int = Field(default=30000)
+    RPC_QUEUE_EXPIRATION: int = Field(default=30_000)  # 30s in milliseconds
+    RPC_MESSAGE_EXPIRATION: int = Field(default=570_000)  # 9m30s in  milliseconds
     USE_PROBES: int = Field(default=0)
     PROBE_PORT: int = Field(default=8081)
     DEFAULT_VLLM_SERVERS: str = Field(default=None, alias="VLLM_SERVERS")
@@ -25,7 +26,7 @@ class Settings(BaseSettings):
     PRIORITY_HANDLER: Literal["ignore", "vllm"] = Field(default="ignore")
     BEST_PRIORITY: int = Field(default=5)
     TIME_TO_FIRST_TOKEN_THRESHOLD: Optional[float] = None
-    METRICS_REFRESH_RATE: int = Field(ge=1, default=5)
+    METRICS_REFRESH_RATE: int = Field(ge=1, default=1)  # in seconds
     REFRESH_COUNT_PER_WINDOW: int = Field(ge=1, default=24)
     # A time window would then be of duration METRICS_REFRESH_RATE * REFRESH_COUNT_PER_WINDOW
 

@@ -1,4 +1,3 @@
-from entities import Base
 from settings import Settings
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker

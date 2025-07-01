@@ -3,16 +3,13 @@ from __future__ import annotations
 import random
 from typing import Dict, List
 
-from ..exceptions import NoSuitableVllm, PercentileComputationError
+from ..exceptions import PercentileComputationError, ServerNotFound
 from ..vllm_server import VLLMServer
 from .metrics_based_strategy import MetricsBasedStrategy
 from .metrics_tracker import MetricsTracker
 
 
 class LeastBusy(MetricsBasedStrategy):
-
-    def __init__(self, servers: List[VLLMServer], tracker: MetricsTracker) -> None:
-        super().__init__(servers, tracker)
 
     # MetricsBasedStrategy requires child classes to implement this
     # That's to make sure a strategy based on metrics has a metrics tracker
@@ -107,4 +104,4 @@ class LeastBusy(MetricsBasedStrategy):
             if server.url == url_least_busy:
                 return server, current_time_to_first_token
 
-        raise NoSuitableVllm()
+        raise ServerNotFound()

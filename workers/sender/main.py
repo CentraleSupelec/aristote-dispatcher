@@ -1,19 +1,23 @@
 import asyncio
 import json
 import logging
-import time
 from contextlib import asynccontextmanager
 from datetime import datetime
 
 from aio_pika.exceptions import ChannelClosed
 from db import Database
 from entities import Metric, User
-from exceptions import InvalidTokenException, NoTokenException, UnauthorizedException
+from exceptions import (
+    InvalidTokenException,
+    NoTokenException,
+    ServerError,
+    UnauthorizedException,
+)
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, PlainTextResponse, StreamingResponse
 from httpx import AsyncClient
 from models import get_model_by_id, get_models
-from rpc_client import RPCClient
+from rpc_client import CallResult, RPCClient
 from settings import Settings
 from starlette.background import BackgroundTask, BackgroundTasks
 
@@ -174,7 +178,10 @@ async def proxy(request: Request, call_next):
             status_code=404,
         )
 
-    if isinstance(rpc_response, int):
+    if isinstance(rpc_response, CallResult):
+        if rpc_response not in {CallResult.QUEUE_OVERLOADED, CallResult.TIMEOUT}:
+            raise ServerError()
+
         response_content = {"error": "Too many people using the service"}
         match str(user.client_type):
             case "chat":

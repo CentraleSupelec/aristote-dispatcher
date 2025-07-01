@@ -10,9 +10,9 @@ class VllmNotReadyException(Exception):
         super().__init__(message)
 
 
-class NoSuitableVllm(Exception):
+class ServerNotFound(Exception):
     def __init__(self):
-        message = "No suitable VLLM server found with good enough metrics"
+        message = "No server found"
         super().__init__(message)
 
 
@@ -25,6 +25,7 @@ class UnknownStrategy(Exception):
 class UnknownPriorityHandler(Exception):
     def __init__(self, priority_handler):
         message = f'"{priority_handler}" not recognized; priority handler must be either "ignore" or "vllm"'
+        super().__init__(message)
 
 
 class PercentileComputationError(Exception):
