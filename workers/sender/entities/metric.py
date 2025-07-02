@@ -11,5 +11,6 @@ class Metric(Base):
     sent_to_llm_date = Column(DateTime)
     response_date = Column(DateTime)
     model = Column(String)
+    server = Column(String)
     prompt_tokens = Column(Integer)
     completion_tokens = Column(Integer)

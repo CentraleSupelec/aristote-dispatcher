@@ -16,6 +16,7 @@ CREATE TABLE metrics (
     sent_to_llm_date DATETIME,
     response_date DATETIME,
     model VARCHAR(255),
+    server VARCHAR(255),
     prompt_tokens INT,
     completion_tokens INT,
     CONSTRAINT fk_user_name FOREIGN KEY (user_name) REFERENCES users(name)

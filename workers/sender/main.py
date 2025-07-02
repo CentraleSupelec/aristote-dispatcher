@@ -241,6 +241,7 @@ async def proxy(request: Request, call_next):
     metric = Metric(
         user_name=user.name,
         model=requested_model,
+        server=llm_url,
         request_date=start,
         sent_to_llm_date=sent_to_llm_date,
         response_date=datetime.now(),
