@@ -50,6 +50,9 @@ class MetricsTracker:
         last_histogram.update(new_histogram)
         diff_histogram.update(new_diff_histogram)
 
+    def update_urls(self, urls: List[str]) -> None:
+        self.urls = urls
+
     async def update_all_metrics_for_server(
         self, session: aiohttp.ClientSession, url: str, window_index: int
     ) -> None:
