@@ -11,7 +11,7 @@ from aio_pika.abc import (
 
 from .exceptions import ServerNotFound
 from .priority_handler import BasePriorityHandler
-from .quality_of_service_policy.warning_log_policy import WarningLogPolicy
+from .quality_of_service_policy.qos_policy import QualityOfServiceBasePolicy
 from .settings import settings
 from .strategy.server_selection_strategy import ServerSelectionStrategy
 
@@ -25,7 +25,7 @@ class RPCServer:
         self,
         url: str,
         strategy: ServerSelectionStrategy,
-        quality_of_service_policy: WarningLogPolicy,
+        quality_of_service_policy: QualityOfServiceBasePolicy,
         priority_handler: BasePriorityHandler,
     ) -> None:
         self.url = url
