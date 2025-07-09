@@ -40,16 +40,16 @@ class ServerPinger:
                 ]
                 results = await asyncio.gather(*tasks, return_exceptions=True)
 
-                ok_servers = [
+                healthy_servers = [
                     server
-                    for server, is_ok in zip(self.servers_to_monitor, results)
-                    if isinstance(is_ok, bool) and is_ok
+                    for server, is_healthy in zip(self.servers_to_monitor, results)
+                    if isinstance(is_healthy, bool) and is_healthy
                 ]
 
                 # Update the strategy with the current healthy servers
-                await self.strategy.update_servers(ok_servers)
+                await self.strategy.update_servers(healthy_servers)
 
-                logging.debug("Updated server list: %d OK servers", len(ok_servers))
+                logging.debug("Updated server list: %d OK servers", len(healthy_servers))
                 await asyncio.sleep(self.time_interval)
 
     async def monitor(self) -> None:
