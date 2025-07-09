@@ -2,7 +2,7 @@ import asyncio
 import logging
 import signal
 
-from .exceptions import UnknownPriorityHandler, UnknownStrategy
+from .exceptions import UnknownPriorityHandler, UnknownStrategy, UnknownQOSPolicy
 from .metrics import wait_for_vllms
 from .priority_handler.ignore_priority_handler import (
     IgnorePriorityHandler,
@@ -10,6 +10,7 @@ from .priority_handler.ignore_priority_handler import (
 from .priority_handler.vllm_priority_handler import VllmPriorityHandler
 from .probes import Prober
 from .quality_of_service_policy.warning_log_policy import WarningLogPolicy
+from .quality_of_service_policy.requeue_policy import RequeuePolicy
 from .rpc_server import RPCServer
 from .settings import settings
 from .strategy.least_busy import LeastBusy
@@ -28,6 +29,9 @@ VLLM_PRIORITY_HANDLER = "vllm"
 TIME_TO_FIRST_TOKEN_THRESHOLD = settings.TIME_TO_FIRST_TOKEN_THRESHOLD
 METRICS_REFRESH_RATE = settings.METRICS_REFRESH_RATE
 REFRESH_COUNT_PER_WINDOW = settings.REFRESH_COUNT_PER_WINDOW
+PING_REFRESH_RATE = settings.PING_REFRESH_RATE
+WARNING_LOG_QOS = "warning-log"
+REQUEUE_QOS = "requeue"
 
 shutdown_signal = asyncio.Event()
 
@@ -80,7 +84,12 @@ if __name__ == "__main__":
     else:
         raise UnknownPriorityHandler(settings.PRIORITY_HANDLER)
 
-    quality_of_service_policy = WarningLogPolicy(TIME_TO_FIRST_TOKEN_THRESHOLD)
+    if settings.QUALITY_OF_SERVICE_POLICY == WARNING_LOG_QOS:
+        quality_of_service_policy = WarningLogPolicy(TIME_TO_FIRST_TOKEN_THRESHOLD)
+    elif settings.QUALITY_OF_SERVICE_POLICY == REQUEUE_QOS:
+        quality_of_service_policy = RequeuePolicy(TIME_TO_FIRST_TOKEN_THRESHOLD)
+    else:
+        raise UnknownQOSPolicy(settings.QUALITY_OF_SERVICE_POLICY)
 
     rpc_server = RPCServer(
         url=RABBITMQ_URL,

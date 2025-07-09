@@ -34,3 +34,9 @@ class PercentileComputationError(Exception):
             f"Couldn't find {100*percentile}th percentile for histogram: {histogram}"
         )
         super().__init__(message)
+
+
+class UnknownQOSPolicy(Exception):
+    def __init__(self, passed_policy):
+        message = f'"{passed_policy} not recognized; policy must either be "warning-log" or "requeue"'
+        super().__init__(message)

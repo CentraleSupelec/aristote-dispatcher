@@ -8,7 +8,7 @@ class QualityOfServiceBasePolicy(ABC):  # pylint: disable=too-few-public-methods
     Abstract base class for qos policies
     """
 
-    def __init__(self, performance_threshold: float) -> None:
+    def __init__(self, performance_threshold: float | None) -> None:
         self.performance_threshold = performance_threshold
 
     @abstractmethod
