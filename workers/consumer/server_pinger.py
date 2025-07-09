@@ -22,11 +22,14 @@ class ServerPinger:
         self.monitoring = False
 
     async def ping_server(
-        self, session: aiohttp.ClientSession, server_url: str
+        self, session: aiohttp.ClientSession, server: VLLMServer
     ) -> bool:
-        url = f"{server_url}/health"
+        url = f"{server.url}/v1/models"
+        headers = {}
+        if server.token:
+            headers["Authorization"] = f"Bearer {server.token}"
         try:
-            async with session.get(url, timeout=5) as response:
+            async with session.get(url, headers=headers, timeout=5) as response:
                 return 200 <= response.status < 300
         except (aiohttp.ClientError, asyncio.TimeoutError):
             return False
@@ -35,7 +38,7 @@ class ServerPinger:
         async with aiohttp.ClientSession() as session:
             while self.monitoring:
                 tasks = [
-                    self.ping_server(session, server.url)
+                    self.ping_server(session, server)
                     for server in self.servers_to_monitor
                 ]
                 results = await asyncio.gather(*tasks, return_exceptions=True)
@@ -49,7 +52,9 @@ class ServerPinger:
                 # Update the strategy with the current healthy servers
                 await self.strategy.update_servers(healthy_servers)
 
-                logging.debug("Updated server list: %d OK servers", len(healthy_servers))
+                logging.debug(
+                    "Updated server list: %d OK servers", len(healthy_servers)
+                )
                 await asyncio.sleep(self.time_interval)
 
     async def monitor(self) -> None:

@@ -30,7 +30,9 @@ class Settings(BaseSettings):
     REFRESH_COUNT_PER_WINDOW: int = Field(ge=1, default=24)
     # A time window would then be of duration METRICS_REFRESH_RATE * REFRESH_COUNT_PER_WINDOW
     PING_REFRESH_RATE: int = Field(ge=1, default=30)  # in seconds
-    QUALITY_OF_SERVICE_POLICY: Literal["warning-log", "requeue"] = Field(default="warning-log")
+    QUALITY_OF_SERVICE_POLICY: Literal["warning-log", "requeue"] = Field(
+        default="warning-log"
+    )
 
     @property
     def VLLM_SERVERS(self):  # pylint: disable=invalid-name
