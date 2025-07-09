@@ -50,6 +50,10 @@ class ServerPinger:
                 ]
 
                 # Update the strategy with the current healthy servers
+                if not healthy_servers:
+                    logging.critical(
+                        "NO HEALTHY SERVERS FOUND: user requests will not be dispatched !"
+                    )
                 await self.strategy.update_servers(healthy_servers)
 
                 logging.debug(
