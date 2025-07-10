@@ -2,15 +2,15 @@ import asyncio
 import logging
 import signal
 
-from .exceptions import UnknownPriorityHandler, UnknownStrategy, UnknownQOSPolicy
+from .exceptions import UnknownPriorityHandler, UnknownQOSPolicy, UnknownStrategy
 from .metrics import wait_for_vllms
 from .priority_handler.ignore_priority_handler import (
     IgnorePriorityHandler,
 )
 from .priority_handler.vllm_priority_handler import VllmPriorityHandler
 from .probes import Prober
-from .quality_of_service_policy.warning_log_policy import WarningLogPolicy
 from .quality_of_service_policy.requeue_policy import RequeuePolicy
+from .quality_of_service_policy.warning_log_policy import WarningLogPolicy
 from .rpc_server import RPCServer
 from .settings import settings
 from .strategy.least_busy import LeastBusy

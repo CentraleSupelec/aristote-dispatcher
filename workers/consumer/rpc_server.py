@@ -49,6 +49,7 @@ class RPCServer:
                 arguments={
                     "x-expires": settings.RPC_QUEUE_EXPIRATION,
                     "x-message-ttl": settings.RPC_MESSAGE_EXPIRATION,
+                    "x-max-priority": settings.RPC_MAX_PRIORITY,
                 },
             )
             await self.queue.consume(
