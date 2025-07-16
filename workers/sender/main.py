@@ -23,8 +23,8 @@ from starlette.background import BackgroundTask, BackgroundTasks
 
 settings = Settings()
 
-database = None
-rpc_client = None
+database: Database = None
+rpc_client: RPCClient = None
 
 logging.basicConfig(
     level=settings.LOG_LEVEL, format="%(asctime)s:%(levelname)s:%(name)s: %(message)s"
@@ -75,7 +75,30 @@ def authorize(request: Request):
     return user
 
 
-def save_metrics_to_db(metric: Metric):
+def save_metrics_to_db(metric: Metric, stream: bool, response_body: bytes) -> None:
+    try:
+        if stream:
+            decoded_chunks = response_body.decode().split("data:")
+            if (
+                decoded_chunks[-1].strip() != "[DONE]"
+            ):  # if the last chunk is not just "[DONE]", then it contains data
+                response_data = json.loads(decoded_chunks[-1].replace("[DONE]", ""))
+            else:  # else the data is in the preceding chunk
+                response_data = json.loads(decoded_chunks[-2])
+        else:
+            response_data = json.loads(response_body)
+    except Exception as exception:
+        logging.error(
+            "Failed to get usage data from response:\n " + str(exception), exc_info=True
+        )
+        response_data = {}
+
+    metric.response_date = datetime.now()
+    metric.prompt_tokens = response_data.get("usage", {}).get("prompt_tokens", None)
+    metric.completion_tokens = response_data.get("usage", {}).get(
+        "completion_tokens", None
+    )
+
     with database.get_session() as session:
         session.add(metric)
         session.commit()
@@ -151,6 +174,7 @@ async def proxy(request: Request, call_next):
         )
 
     requested_model = json_body["model"]
+    stream = json_body.get("stream", True)
 
     if not await get_model_by_id(settings, requested_model):
         return JSONResponse(
@@ -230,13 +254,10 @@ async def proxy(request: Request, call_next):
     logging.debug(" > Request content: %s", body)
 
     sent_to_llm_date = datetime.now()
-    res = await http_client.send(req, stream=True)
+    res = await http_client.send(req, stream=stream)
     logging.info("Proxy request sent")
 
     body = await res.aread()
-    response_json = json.loads(body)
-    prompt_tokens = response_json.get("usage", {}).get("prompt_tokens")
-    completion_tokens = response_json.get("usage", {}).get("completion_tokens")
 
     metric = Metric(
         user_name=user.name,
@@ -244,9 +265,6 @@ async def proxy(request: Request, call_next):
         server=llm_url,
         request_date=start,
         sent_to_llm_date=sent_to_llm_date,
-        response_date=datetime.now(),
-        prompt_tokens=prompt_tokens,
-        completion_tokens=completion_tokens,
     )
 
     background_tasks = BackgroundTasks(
@@ -254,7 +272,7 @@ async def proxy(request: Request, call_next):
             BackgroundTask(res.aclose),
             BackgroundTask(http_client.aclose),
             BackgroundTask(logging.info, f"Finished request started at {start}"),
-            BackgroundTask(save_metrics_to_db, metric),
+            BackgroundTask(save_metrics_to_db, metric, stream, body),
         ]
     )
 
