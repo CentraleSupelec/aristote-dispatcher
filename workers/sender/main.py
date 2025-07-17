@@ -15,7 +15,7 @@ from exceptions import (
 )
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, PlainTextResponse, StreamingResponse
-from httpx import AsyncClient
+from httpx import AsyncClient, Response
 from models import get_model_by_id, get_models
 from rpc_client import CallResult, RPCClient
 from settings import Settings
@@ -75,7 +75,12 @@ def authorize(request: Request):
     return user
 
 
-def save_metrics_to_db(metric: Metric, stream: bool, response_body: bytes) -> None:
+async def store_usage_metrics(
+    response_body: bytes, metric: Metric, stream: bool
+) -> None:
+    logging.debug("Logging usage in database...")
+    metric.response_date = datetime.now()
+
     try:
         if stream:
             decoded_chunks = response_body.decode().split("data:")
@@ -93,7 +98,6 @@ def save_metrics_to_db(metric: Metric, stream: bool, response_body: bytes) -> No
         )
         response_data = {}
 
-    metric.response_date = datetime.now()
     metric.prompt_tokens = response_data.get("usage", {}).get("prompt_tokens", None)
     metric.completion_tokens = response_data.get("usage", {}).get(
         "completion_tokens", None
@@ -102,6 +106,17 @@ def save_metrics_to_db(metric: Metric, stream: bool, response_body: bytes) -> No
     with database.get_session() as session:
         session.add(metric)
         session.commit()
+
+
+async def stream_and_accumulate_response(
+    response: Response, background_tasks: BackgroundTasks, metric: Metric, stream: bool
+):
+    full_response_bytes = b""
+    async for chunk in response.aiter_bytes():
+        full_response_bytes += chunk
+        yield chunk
+
+    background_tasks.add_task(store_usage_metrics, full_response_bytes, metric, stream)
 
 
 @app.get("/v1/models")
@@ -257,8 +272,6 @@ async def proxy(request: Request, call_next):
     res = await http_client.send(req, stream=stream)
     logging.info("Proxy request sent")
 
-    body = await res.aread()
-
     metric = Metric(
         user_name=user.name,
         model=requested_model,
@@ -272,12 +285,11 @@ async def proxy(request: Request, call_next):
             BackgroundTask(res.aclose),
             BackgroundTask(http_client.aclose),
             BackgroundTask(logging.info, f"Finished request started at {start}"),
-            BackgroundTask(save_metrics_to_db, metric, stream, body),
         ]
     )
 
     return StreamingResponse(
-        iter([body]),
+        stream_and_accumulate_response(res, background_tasks, metric, stream),
         headers=res.headers,
         background=background_tasks,
     )
