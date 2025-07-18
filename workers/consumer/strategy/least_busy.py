@@ -97,7 +97,7 @@ class LeastBusy(MetricsBasedStrategy):
             if scores[url] == -1:
                 url_least_busy = url
 
-        if not url_least_busy:
+        if scores and not url_least_busy:
             url_least_busy, current_time_to_first_token = LeastBusy.least_busy(scores)
 
         for server in self.servers:
