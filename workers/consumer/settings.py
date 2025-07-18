@@ -34,6 +34,7 @@ class Settings(BaseSettings):
     QUALITY_OF_SERVICE_POLICY: Literal["warning-log", "requeue"] = Field(
         default="warning-log"
     )
+    MAX_PARALLEL_REQUESTS: int = Field(default=20)
 
     @property
     def VLLM_SERVERS(self):  # pylint: disable=invalid-name
