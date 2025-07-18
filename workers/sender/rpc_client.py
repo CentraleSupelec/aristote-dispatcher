@@ -1,4 +1,5 @@
 import asyncio
+import json
 import logging
 import uuid
 from enum import Enum
@@ -114,6 +115,20 @@ class RPCClient:
             self.futures.pop(correlation_id, None)  # Clean up
             logging.warning("Timeout waiting for response from consumer")
             return CallResult.TIMEOUT
+
+    async def send_completion_message(self, model: str, payload: dict) -> None:
+        try:
+            routing_key = f"{model}_completed"
+            await self.channel.default_exchange.publish(
+                Message(
+                    body=json.dumps(payload).encode(),
+                    delivery_mode=DeliveryMode.PERSISTENT,
+                ),
+                routing_key=routing_key,
+            )
+            logging.debug("Sent completion message to %s", routing_key)
+        except Exception as e:
+            logging.error("Failed to send completion message: %s", e)
 
     async def check_connection(self):
         if self.connection and self.channel:

@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     RABBITMQ_PORT: int = Field(default=5672)
     RABBITMQ_MANAGEMENT_PORT: int = Field(default=15672)
     MESSAGE_TIMEOUT: int = Field(default=570)  # 9m30s in seconds
+    PROXY_CLIENT_REQUEST_TIMEOUT: int = Field(default=600)
 
     DB_TYPE: Literal["mysql", "postgresql"] = Field(default="mysql")
     DB_HOST: str = Field()

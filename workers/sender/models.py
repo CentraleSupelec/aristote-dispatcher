@@ -22,7 +22,8 @@ async def get_models(settings: Settings):
         }
         # We need to filter out the default entries of the default exchange
         for binding in response.json()
-        if not binding["destination"].startswith("amq")
+        if (not binding["destination"].startswith("amq"))
+        and (not binding["destination"].endswith("completed"))
     ]
 
     return models

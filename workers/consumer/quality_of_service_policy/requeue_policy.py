@@ -14,11 +14,14 @@ class RequeuePolicy(QualityOfServiceBasePolicy):
         await msg.nack(requeue=True)
 
     def apply_policy(
-        self, performance_indicator: float | None, message: AbstractIncomingMessage
+        self,
+        performance_indicator: float | None,
+        message: AbstractIncomingMessage,
+        current_parallel_requests: int,
     ) -> bool:
-        if (
-            isinstance(performance_indicator, (float, int))
-            and performance_indicator > self.performance_threshold
+        if isinstance(performance_indicator, (float, int)) and (
+            (performance_indicator > self.performance_threshold)
+            or (current_parallel_requests >= settings.MAX_PARALLEL_REQUESTS)
         ):
             logging.info("QoS policy deferred the message; requeuing.")
             asyncio.create_task(self._delayed_nack(message))
