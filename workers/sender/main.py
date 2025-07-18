@@ -285,6 +285,17 @@ async def proxy(request: Request, call_next):
             BackgroundTask(res.aclose),
             BackgroundTask(http_client.aclose),
             BackgroundTask(logging.info, f"Finished request started at {start}"),
+            BackgroundTask(
+                rpc_client.send_completion_message,
+                requested_model,
+                {
+                    "message_id": str(rpc_response.correlation_id),
+                    "completed_at": datetime.utcnow().isoformat(),
+                    "model": requested_model,
+                    "user": user.name,
+                    "server": llm_url,
+                },
+            ),
         ]
     )
 
