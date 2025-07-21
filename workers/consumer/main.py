@@ -12,6 +12,7 @@ from .probes import Prober
 from .quality_of_service_policy.requeue_policy import RequeuePolicy
 from .quality_of_service_policy.warning_log_policy import WarningLogPolicy
 from .rpc_server import RPCServer
+from .server_pinger import ServerPinger
 from .settings import settings
 from .strategy.least_busy import LeastBusy
 from .strategy.metrics_based_strategy import MetricsBasedStrategy
@@ -41,12 +42,21 @@ async def main_consumer(p_strategy: ServerSelectionStrategy, p_rpc_server: RPCSe
 
     await p_rpc_server.first_connect()
 
+    pinger = ServerPinger(
+        servers=VLLM_SERVERS,
+        time_interval=PING_REFRESH_RATE,
+        strategy=p_strategy,
+    )
+    await pinger.monitor()
+
     # Consumer is running until shutdown signal is received
     # Until then, all action occurs in the on_message_callback
     # of the RPCServer class
     await shutdown_signal.wait()
 
     await p_rpc_server.close()
+
+    await pinger.stop_monitor()
 
     # we need to explicitly stop monitoring
     if isinstance(p_strategy, MetricsBasedStrategy):

@@ -33,3 +33,10 @@ class MetricsBasedStrategy(ServerSelectionStrategy):
         and return an instance of the strategy.
         Should create a MetricsTracker instance and pass it to the constructor
         """
+
+    async def update_servers(self, servers: List[VLLMServer]) -> None:
+        if servers != self.servers:
+            await self.tracker.stop_monitor()
+            await super().update_servers(servers)
+            self.tracker.update_urls([server.url for server in servers])
+            await self.tracker.monitor()
