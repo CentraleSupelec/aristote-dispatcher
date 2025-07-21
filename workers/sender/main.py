@@ -260,7 +260,7 @@ async def proxy(request: Request, call_next):
         json_body["priority"] = priority
         body = json.dumps(json_body)
 
-    http_client = AsyncClient(base_url=llm_url, timeout=300.0)
+    http_client = AsyncClient(base_url=llm_url, timeout=settings.REQUEST_TIMEOUT)
     req = http_client.build_request(
         method=request.method, url=request.url.path, content=body, headers=headers
     )
