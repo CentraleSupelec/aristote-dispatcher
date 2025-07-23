@@ -119,6 +119,12 @@ async def stream_and_accumulate_response(
     background_tasks.add_task(store_usage_metrics, full_response_bytes, metric, stream)
 
 
+@app.get("/artificial-timeout")
+async def timeout():
+    await asyncio.sleep(settings.ARTIFICIAL_TIMEOUT)
+    return PlainTextResponse("done")
+
+
 @app.get("/v1/models")
 async def models():
     return JSONResponse(

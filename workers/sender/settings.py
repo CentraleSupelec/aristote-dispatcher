@@ -22,6 +22,8 @@ class Settings(BaseSettings):
     DB_PASSWORD: str = Field()
     DB_DATABASE: str = Field()
 
+    ARTIFICIAL_TIMEOUT: int = Field(default=0)
+
     @model_validator(mode="after")
     def check_required_fields(self):
         missing_fields = [
