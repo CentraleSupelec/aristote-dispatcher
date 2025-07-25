@@ -37,7 +37,7 @@ async def wait_for_vllms(vllm_servers: List[VLLMServer]) -> None:
 
     for task in done:
         if task.exception() is None:
-            logging.info("Server %s is ready.", tasks[task])
+            logging.info("Server %s is ready.", tasks[task].url)
             break
     else:
         logging.error(

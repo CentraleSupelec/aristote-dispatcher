@@ -35,6 +35,8 @@ class RPCServer:
         self.connection: AbstractConnection = None
         self.channel: AbstractChannel = None
         self.queue: AbstractQueue = None
+        self.completion_queue: AbstractQueue = None
+        self.current_parallel_requests: int = 0
 
     async def first_connect(self) -> None:
         logging.debug("Connecting consumer to RabbitMQ...")
@@ -55,6 +57,16 @@ class RPCServer:
             await self.queue.consume(
                 self.on_message_callback,
             )
+            self.completion_queue = await self.channel.declare_queue(
+                name=f"{MODEL}_completed",
+                durable=True,
+                arguments={
+                    "x-expires": settings.RPC_QUEUE_EXPIRATION,
+                },
+            )
+            await self.completion_queue.consume(
+                self.on_completion_callback,
+            )
         except Exception as e:
             logging.error("Error connecting to RabbitMQ: %s", e)
             raise
@@ -72,11 +84,11 @@ class RPCServer:
             arguments={
                 "x-expires": settings.RPC_QUEUE_EXPIRATION,
                 "x-message-ttl": settings.RPC_MESSAGE_EXPIRATION,
+                "x-max-priority": settings.RPC_MAX_PRIORITY,
             },
         )
         await self.queue.consume(
             self.on_message_callback,
-            no_ack=True,
         )
         logging.info("Reconnected to RabbitMQ")
 
@@ -99,7 +111,7 @@ class RPCServer:
             vllm_server, performance_indicator = self.strategy.choose_server()
             priority = self.priority_handler.apply_priority(message.priority)
             if not self.quality_of_service_policy.apply_policy(
-                performance_indicator, message
+                performance_indicator, message, self.current_parallel_requests
             ):
                 return
             llm_params = {"llmUrl": vllm_server.url, "llmToken": vllm_server.token}
@@ -117,10 +129,27 @@ class RPCServer:
                 routing_key=message.reply_to,
             )
             await message.ack()
+            self.current_parallel_requests += 1
             logging.info("LLM URL for model %s sent to API", MODEL)
         except Exception as e:
             logging.error("An error occurred while publishing message: %s", e)
             raise
+
+    async def on_completion_callback(self, message: AbstractIncomingMessage):
+        try:
+            data = json.loads(message.body.decode())
+            logging.debug(
+                "Completion received for message ID: %s, completed_at: %s",
+                data.get("message_id"),
+                data.get("completed_at"),
+            )
+            self.current_parallel_requests = max(self.current_parallel_requests - 1, 0)
+            logging.debug(
+                "self.current_parallel_requests = %s", self.current_parallel_requests
+            )
+            await message.ack()
+        except Exception as e:
+            logging.error("Error processing completion message: %s", e)
 
     async def check_connection(self) -> bool:
         if self.connection and self.channel:

@@ -260,7 +260,9 @@ async def proxy(request: Request, call_next):
         json_body["priority"] = priority
         body = json.dumps(json_body)
 
-    http_client = AsyncClient(base_url=llm_url, timeout=300.0)
+    http_client = AsyncClient(
+        base_url=llm_url, timeout=settings.PROXY_CLIENT_REQUEST_TIMEOUT
+    )
     req = http_client.build_request(
         method=request.method, url=request.url.path, content=body, headers=headers
     )
@@ -285,6 +287,17 @@ async def proxy(request: Request, call_next):
             BackgroundTask(res.aclose),
             BackgroundTask(http_client.aclose),
             BackgroundTask(logging.info, f"Finished request started at {start}"),
+            BackgroundTask(
+                rpc_client.send_completion_message,
+                requested_model,
+                {
+                    "message_id": str(rpc_response.correlation_id),
+                    "completed_at": datetime.utcnow().isoformat(),
+                    "model": requested_model,
+                    "user": user.name,
+                    "server": llm_url,
+                },
+            ),
         ]
     )
 
