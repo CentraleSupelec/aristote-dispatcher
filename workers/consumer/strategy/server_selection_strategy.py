@@ -18,3 +18,6 @@ class ServerSelectionStrategy(ABC):  # pylint: disable=too-few-public-methods
 
     async def update_servers(self, servers: List[VLLMServer]) -> None:
         self.servers = servers
+
+    def get_server_score(self, url: str) -> None | float:
+        return None

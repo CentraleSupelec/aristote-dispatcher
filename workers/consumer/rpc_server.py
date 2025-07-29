@@ -9,7 +9,7 @@ from aio_pika.abc import (
     AbstractQueue,
 )
 
-from .exceptions import ServerNotFound
+from .exceptions import ServerNotFound, UnknownLocalPriorityModel
 from .priority_handler import BasePriorityHandler
 from .quality_of_service_policy.qos_policy import QualityOfServiceBasePolicy
 from .settings import settings
@@ -67,6 +67,18 @@ class RPCServer:
             await self.completion_queue.consume(
                 self.on_completion_callback,
             )
+            for server in settings.VLLM_SERVERS:
+                server_queue = await self.channel.declare_queue(
+                    name=f"{MODEL}_{server.organization}",
+                    durable=True,
+                    arguments={
+                        "x-expires": settings.RPC_QUEUE_EXPIRATION,
+                    },
+                )
+                await server_queue.consume(
+                    self.server_specific_callback,
+                )
+
         except Exception as e:
             logging.error("Error connecting to RabbitMQ: %s", e)
             raise
@@ -122,7 +134,7 @@ class RPCServer:
         try:
             await self.channel.default_exchange.publish(
                 Message(
-                    body=json.dumps(llm_params).encode(),
+                    body=json.dumps(llm_params).encode("utf-8"),
                     delivery_mode=DeliveryMode.PERSISTENT,
                     correlation_id=str(message.correlation_id),
                 ),
@@ -137,7 +149,7 @@ class RPCServer:
 
     async def on_completion_callback(self, message: AbstractIncomingMessage):
         try:
-            data = json.loads(message.body.decode())
+            data = json.loads(message.body.decode("utf-8"))
             logging.debug(
                 "Completion received for message ID: %s, completed_at: %s",
                 data.get("message_id"),
@@ -150,6 +162,57 @@ class RPCServer:
             await message.ack()
         except Exception as e:
             logging.error("Error processing completion message: %s", e)
+
+    async def server_specific_callback(self, message: AbstractIncomingMessage):
+        try:
+            data = json.loads(message.body.decode("utf-8"))
+            local_priority_model = data.get("local_priority_model")
+            # ne peut plus être que private only ou private first vu qu'il a aterri dans cette queue'
+            organization = data.get("organization")
+            priority = self.priority_handler.apply_priority(message.priority)
+
+            target_server_url = None
+            target_server_token = None
+            for server in settings.VLLM_SERVERS:
+                if server.organization == organization:
+                    target_server_url = server.url
+                    target_server_token = server.token
+            if not target_server_url or not target_server_token:
+                raise ServerNotFound()
+            score = self.strategy.get_server_score(target_server_url)
+
+            target_requeue = None
+            if local_priority_model == "private-first":
+                target_requeue = self.queue
+            elif local_priority_model != "private-only":
+                raise UnknownLocalPriorityModel(local_priority_model)
+
+            if not self.quality_of_service_policy.apply_policy(
+                score,
+                message,
+                self.current_parallel_requests,
+                target_requeue,
+                self.channel.default_exchange,
+            ):
+                return
+
+            llm_params = {"llmUrl": target_server_url, "llmToken": target_server_token}
+            if priority is not None and isinstance(priority, int):
+                llm_params["priority"] = priority
+
+            await self.channel.default_exchange.publish(
+                Message(
+                    body=json.dumps(llm_params).encode("utf-8"),
+                    delivery_mode=DeliveryMode.PERSISTENT,
+                    correlation_id=str(message.correlation_id),
+                ),
+                routing_key=message.reply_to,
+            )
+            await message.ack()
+            self.current_parallel_requests += 1
+            logging.info("LLM URL for model %s sent to API", MODEL)
+        except Exception as e:
+            logging.error("Error processing server specific message: %s", e)
 
     async def check_connection(self) -> bool:
         if self.connection and self.channel:

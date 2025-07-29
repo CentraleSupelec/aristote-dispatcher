@@ -40,3 +40,9 @@ class UnknownQOSPolicy(Exception):
     def __init__(self, passed_policy):
         message = f'"{passed_policy} not recognized; policy must either be "warning-log" or "requeue"'
         super().__init__(message)
+
+
+class UnknownLocalPriorityModel(Exception):
+    def __init__(self, passed_model):
+        message = f'"{passed_model} not recognized; model must either be "private-first" or "private-only"'
+        super().__init__(message)

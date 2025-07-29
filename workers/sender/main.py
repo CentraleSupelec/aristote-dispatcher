@@ -200,8 +200,24 @@ async def proxy(request: Request, call_next):
             status_code=404,
         )
 
+    local_priority_model = json_body.get("local-priority-model", "any")
+    if local_priority_model not in ["any", "private-first", "private-only"]:
+        return JSONResponse(
+            content={
+                "object": "error",
+                "message": "local priority model  not recognized",
+            },
+            status_code=400,
+        )
+
     try:
-        rpc_response = await rpc_client.call(user.priority, threshold, requested_model)
+        rpc_response = await rpc_client.call(
+            user.priority,
+            threshold,
+            requested_model,
+            user.organization,
+            local_priority_model,
+        )
     except ChannelClosed:
         # the queue may have been deleted (ex: consumer does not exist anymore)
         logging.debug(
@@ -230,7 +246,7 @@ async def proxy(request: Request, call_next):
 
     logging.info("RPC response received")
 
-    llm_params = json.loads(rpc_response.body.decode())
+    llm_params = json.loads(rpc_response.body.decode("utf-8"))
     llm_url = llm_params["llmUrl"]
     llm_token = llm_params["llmToken"]
 
