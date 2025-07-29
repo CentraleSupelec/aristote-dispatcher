@@ -29,6 +29,10 @@ services:
       DB_USER: user
       DB_PASSWORD: password
       DB_DATABASE: test
+      MODEL_HOST_MAPPING: >
+        {
+          "Qwen/Qwen2-0.5B-Instruct": ["centralesupelec"]
+        }
     restart: on-failure
     depends_on:
       - rabbitmq
@@ -39,13 +43,18 @@ services:
       context: ./consumer
     environment:
       LOG_LEVEL: 10
-      MODEL: Qwen/Qwen2.5-0.5B-Instruct
-      # uncomment next line if you run vllm locally
-      # VLLM_SERVERS: '{"http://host.docker.internal:8000": "secret_key"}'
-      VLLM_SERVERS: '{"http://vllm-arm:8000": "secret_key"}'
+      MODEL: casperhansen/llama-3.3-70b-instruct-awq
+      VLLM_SERVERS: >
+        {
+          "http://host.docker.internal:8000": {
+            "token": "your-token-here",
+            "organization": "centralesupelec"
+          }
+        }
       ROUTING_STRATEGY: least-busy
-      TIME_TO_FIRST_TOKEN_THRESHOLD: 1.0
-      PRIORITY_HANDLER: "vllm"
+      TIME_TO_FIRST_TOKEN_THRESHOLD: 0.5
+      PRIORITY_HANDLER: "ignore"
+      QUALITY_OF_SERVICE_POLICY: "requeue"
     restart: on-failure
     depends_on:
       - rabbitmq
@@ -113,4 +122,4 @@ services:
 
 volumes:
   postgres-data:
-  mysql-data:
+

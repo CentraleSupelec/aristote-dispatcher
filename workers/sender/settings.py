@@ -1,5 +1,6 @@
+import json
 import logging
-from typing import Literal
+from typing import Dict, List, Literal
 
 from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings
@@ -22,6 +23,8 @@ class Settings(BaseSettings):
     DB_PASSWORD: str = Field()
     DB_DATABASE: str = Field()
 
+    DEFAULT_MODEL_HOST_MAPPING: str = Field(default=None, alias="MODEL_HOST_MAPPING")
+
     @model_validator(mode="after")
     def check_required_fields(self):
         missing_fields = [
@@ -41,3 +44,18 @@ class Settings(BaseSettings):
     @property
     def RABBITMQ_MANAGEMENT_URL(self):  # pylint: disable=invalid-name
         return f"http://{self.RABBITMQ_HOST}:{self.RABBITMQ_MANAGEMENT_PORT}"
+
+    @property
+    def MODEL_HOST_MAPPING(self) -> Dict[str, List[str]]:
+        try:
+            mapping = json.loads(self.DEFAULT_MODEL_HOST_MAPPING)
+            if not isinstance(mapping, dict):
+                raise ValueError("MODEL_HOST_MAPPING must be a JSON object")
+            for _, v in mapping.items():
+                if not isinstance(v, list) or not all(isinstance(i, str) for i in v):
+                    raise ValueError(
+                        "Each value in MODEL_HOST_MAPPING must be a list of strings"
+                    )
+            return mapping
+        except json.JSONDecodeError as e:
+            raise ValueError("Invalid JSON format for MODEL_HOST_MAPPING") from e

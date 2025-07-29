@@ -80,7 +80,12 @@ class RPCClient:
         future.set_result(message)
 
     async def call(
-        self, priority: int, threshold: int, model: str
+        self,
+        priority: int,
+        threshold: int,
+        model: str,
+        organization: str,
+        routing_mode: str,
     ) -> Union[AbstractIncomingMessage, CallResult]:
         model_queue = await self.channel.get_queue(name=model)
         nb_messages = model_queue.declaration_result.message_count
@@ -94,17 +99,35 @@ class RPCClient:
         future = loop.create_future()
         self.futures[correlation_id] = future
 
-        await self.channel.default_exchange.publish(
-            message=Message(
-                body=b"AVAILABLE?",
-                delivery_mode=DeliveryMode.PERSISTENT,
-                correlation_id=correlation_id,
-                reply_to=self.callback_queue.name,
-                priority=priority,
-            ),
-            routing_key=model,
-        )
-        logging.debug("Message pushed to model queue %s", model)
+        if routing_mode == "any":
+            await self.channel.default_exchange.publish(
+                message=Message(
+                    body=b"AVAILABLE?",
+                    delivery_mode=DeliveryMode.PERSISTENT,
+                    correlation_id=correlation_id,
+                    reply_to=self.callback_queue.name,
+                    priority=priority,
+                ),
+                routing_key=model,
+            )
+            logging.debug("Message pushed to model queue %s", model)
+
+        else:
+            payload = {
+                "routing_mode": routing_mode,
+                "organization": organization,
+            }
+            await self.channel.default_exchange.publish(
+                message=Message(
+                    body=json.dumps(payload).encode("utf-8"),
+                    delivery_mode=DeliveryMode.PERSISTENT,
+                    correlation_id=correlation_id,
+                    reply_to=self.callback_queue.name,
+                    priority=priority,
+                ),
+                routing_key=f"{model}_{organization}_private",
+            )
+            logging.debug("Message pushed to model queue %s %s", model, organization)
         try:
             response = await asyncio.wait_for(
                 future, timeout=self.settings.MESSAGE_TIMEOUT
@@ -121,7 +144,7 @@ class RPCClient:
             routing_key = f"{model}_completed"
             await self.channel.default_exchange.publish(
                 Message(
-                    body=json.dumps(payload).encode(),
+                    body=json.dumps(payload).encode("utf-8"),
                     delivery_mode=DeliveryMode.PERSISTENT,
                 ),
                 routing_key=routing_key,

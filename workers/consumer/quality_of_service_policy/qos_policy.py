@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 
-from aio_pika.abc import AbstractIncomingMessage
+from aio_pika import Exchange
+from aio_pika.abc import AbstractIncomingMessage, AbstractQueue
 
 
 class QualityOfServiceBasePolicy(ABC):  # pylint: disable=too-few-public-methods
@@ -15,7 +16,10 @@ class QualityOfServiceBasePolicy(ABC):  # pylint: disable=too-few-public-methods
     def apply_policy(
         self,
         performance_indicator: float | None,
-        message: AbstractIncomingMessage,
         current_parallel_requests: int,
+        max_parallel_requests: int,
+        message: AbstractIncomingMessage | None = None,
+        target_requeue: AbstractQueue | None = None,
+        exchange: Exchange | None = None,
     ) -> bool:
         pass
