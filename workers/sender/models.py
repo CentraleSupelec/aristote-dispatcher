@@ -24,7 +24,8 @@ async def get_models(settings: Settings):
         for binding in response.json()
         if (
             not binding["destination"].startswith("amq")
-            and "_" not in binding["destination"]
+            and not binding["destination"].endswith("completed")
+            and not binding["destination"].endswith("private")
         )
     ]
 

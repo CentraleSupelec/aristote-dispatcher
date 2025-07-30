@@ -125,7 +125,7 @@ class RPCClient:
                     reply_to=self.callback_queue.name,
                     priority=priority,
                 ),
-                routing_key=f"{model}_{organization}",
+                routing_key=f"{model}_{organization}_private",
             )
             logging.debug("Message pushed to model queue %s %s", model, organization)
         try:

@@ -72,7 +72,7 @@ class RPCServer:
             )
             for server in settings.VLLM_SERVERS:
                 server_queue = await self.channel.declare_queue(
-                    name=f"{MODEL}_{server.organization}",
+                    name=f"{MODEL}_{server.organization}_private",
                     durable=True,
                     arguments={
                         "x-expires": settings.RPC_QUEUE_EXPIRATION,
