@@ -27,6 +27,7 @@ class RequeuePolicy(QualityOfServiceBasePolicy):
             ),
             routing_key=queue.name,
         )
+        await msg.ack()
 
     def apply_policy(
         self,
