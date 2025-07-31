@@ -205,7 +205,19 @@ async def proxy(request: Request, call_next):
         return JSONResponse(
             content={
                 "object": "error",
-                "message": "local priority model  not recognized",
+                "message": f"local priority model: {local_priority_model} not recognized: must either be 'any', 'private-first' or 'private-only'",
+            },
+            status_code=400,
+        )
+
+    if (
+        local_priority_model != "any"
+        and user.organization not in settings.MODEL_HOST_MAPPING[requested_model]
+    ):
+        return JSONResponse(
+            content={
+                "object": "error",
+                "message": f"The requested model {requested_model} is not available for your organization ({user.organization}), so you can't ask for 'private-first' or 'private-only'",
             },
             status_code=400,
         )
