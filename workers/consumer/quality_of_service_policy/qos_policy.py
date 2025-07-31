@@ -16,8 +16,9 @@ class QualityOfServiceBasePolicy(ABC):  # pylint: disable=too-few-public-methods
     def apply_policy(
         self,
         performance_indicator: float | None,
-        message: AbstractIncomingMessage,
         current_parallel_requests: int,
+        max_parallel_requests: int,
+        message: AbstractIncomingMessage | None = None,
         target_requeue: AbstractQueue | None = None,
         exchange: Exchange | None = None,
     ) -> bool:

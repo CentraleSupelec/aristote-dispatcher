@@ -127,8 +127,9 @@ class RPCServer:
             priority = self.priority_handler.apply_priority(message.priority)
             if not self.quality_of_service_policy.apply_policy(
                 performance_indicator,
-                message,
                 self.current_parallel_requests[vllm_server],
+                vllm_server.max_parallel_requests,
+                message,
             ):
                 return
             llm_params = {"llmUrl": vllm_server.url, "llmToken": vllm_server.token}
@@ -204,8 +205,9 @@ class RPCServer:
 
             if not self.quality_of_service_policy.apply_policy(
                 score,
-                message,
                 self.current_parallel_requests[target_server],
+                target_server.max_parallel_requests,
+                message,
                 target_requeue,
                 self.channel.default_exchange,
             ):

@@ -13,7 +13,7 @@ class ServerSelectionStrategy(ABC):  # pylint: disable=too-few-public-methods
         self.servers = servers
 
     @abstractmethod
-    def choose_server(self) -> (VLLMServer, float | None):
+    def choose_server(self) -> tuple[VLLMServer, float | None]:
         pass
 
     async def update_servers(self, servers: List[VLLMServer]) -> None:

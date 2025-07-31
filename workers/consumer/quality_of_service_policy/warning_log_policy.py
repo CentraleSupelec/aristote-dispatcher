@@ -3,7 +3,6 @@ import logging
 from aio_pika import Exchange
 from aio_pika.abc import AbstractIncomingMessage, AbstractQueue
 
-from ..settings import settings
 from .qos_policy import QualityOfServiceBasePolicy
 
 
@@ -12,8 +11,9 @@ class WarningLogPolicy(QualityOfServiceBasePolicy):
     def apply_policy(
         self,
         performance_indicator: float | None,
-        message: AbstractIncomingMessage,
         current_parallel_requests: int,
+        max_parallel_requests: int,
+        message: AbstractIncomingMessage | None = None,
         target_requeue: AbstractQueue | None = None,
         exchange: Exchange | None = None,
     ) -> bool:
@@ -24,7 +24,7 @@ class WarningLogPolicy(QualityOfServiceBasePolicy):
                     performance_indicator,
                     self.performance_threshold,
                 )
-            if current_parallel_requests >= settings.MAX_PARALLEL_REQUESTS:
+            if current_parallel_requests >= max_parallel_requests:
                 logging.warning(
                     "Too many requests waiting for vllm response: %s",
                     current_parallel_requests,

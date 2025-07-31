@@ -32,14 +32,15 @@ class RequeuePolicy(QualityOfServiceBasePolicy):
     def apply_policy(
         self,
         performance_indicator: float | None,
-        message: AbstractIncomingMessage,
         current_parallel_requests: int,
+        max_parallel_requests: int,
+        message: AbstractIncomingMessage | None = None,
         target_requeue: AbstractQueue | None = None,
         exchange: Exchange | None = None,
     ) -> bool:
         if isinstance(performance_indicator, (float, int)) and (
             (performance_indicator > self.performance_threshold)
-            or (current_parallel_requests >= settings.MAX_PARALLEL_REQUESTS)
+            or (current_parallel_requests >= max_parallel_requests)
         ):
             logging.info("QoS policy deferred the message; requeuing.")
             if target_requeue:
