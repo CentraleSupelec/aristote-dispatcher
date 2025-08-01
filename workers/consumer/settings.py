@@ -1,6 +1,6 @@
 import json
 import logging
-from typing import Literal, Optional
+from typing import List, Literal, Optional
 
 from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings
@@ -34,22 +34,36 @@ class Settings(BaseSettings):
     QUALITY_OF_SERVICE_POLICY: Literal["warning-log", "requeue"] = Field(
         default="warning-log"
     )
-    MAX_PARALLEL_REQUESTS: int = Field(default=20)
+    DEFAULT_MAX_PARALLEL_REQUESTS: int = Field(default=20)
 
     @property
-    def VLLM_SERVERS(self):  # pylint: disable=invalid-name
-
-        if self.DEFAULT_VLLM_SERVERS:
-            try:
-                servers = json.loads(self.DEFAULT_VLLM_SERVERS)
-                return [
-                    VLLMServer(url=url, token=token if token else None)
-                    for url, token in servers.items()
-                ]
-            except json.JSONDecodeError as e:
-                raise ValueError("Invalid JSON format for VLLM_SERVERS") from e
-        else:
+    def VLLM_SERVERS(self) -> List[VLLMServer]:
+        if not self.DEFAULT_VLLM_SERVERS:
             raise ValueError("VLLM_SERVERS env variable is required")
+
+        try:
+            raw_servers = json.loads(self.DEFAULT_VLLM_SERVERS)
+        except json.JSONDecodeError as e:
+            raise ValueError("Invalid JSON format for VLLM_SERVERS") from e
+
+        servers = []
+        for url, config in raw_servers.items():
+            if not isinstance(config, dict):
+                raise ValueError(
+                    f"Each VLLM server must be a JSON object, got {type(config)} at {url}"
+                )
+
+            servers.append(
+                VLLMServer(
+                    url=url,
+                    token=config.get("token"),
+                    organization=config["organization"],
+                    max_parallel_requests=config.get(
+                        "max_parallel_requests", self.DEFAULT_MAX_PARALLEL_REQUESTS
+                    ),
+                )
+            )
+        return servers
 
     @property
     def RABBITMQ_URL(self):  # pylint: disable=invalid-name

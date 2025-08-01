@@ -32,7 +32,9 @@ class LeastBusy(MetricsBasedStrategy):
         return cls(servers, tracker)
 
     @staticmethod
-    def get_percentile(histogram: dict, percentile: float = 0.95) -> tuple[int, float]:
+    def get_percentile(
+        histogram: dict, percentile: float = 0.95
+    ) -> tuple[int, float] | None:
         """
         histogram has the following shape:
         {
@@ -63,7 +65,7 @@ class LeastBusy(MetricsBasedStrategy):
 
     @staticmethod
     def business_score(
-        tft_bucket: tuple[int, float],
+        tft_bucket: tuple[int, float] | None,
     ) -> float:
         """
         both buckets have the shape (bucket_index, bucket_value)
@@ -72,8 +74,13 @@ class LeastBusy(MetricsBasedStrategy):
         # for now we only consider the 95% time to first token bucket as score
         return tft_bucket[1] if tft_bucket else -1
 
+    def get_server_score(self, url: str) -> float:
+        tft_histogram = self.tracker.time_to_first_token_diff_histograms[url]
+        tft_bucket_95 = LeastBusy.get_percentile(tft_histogram)
+        return LeastBusy.business_score(tft_bucket_95)
+
     @staticmethod
-    def least_busy(scores: Dict[str, float]) -> (str, float):
+    def least_busy(scores: Dict[str, float]) -> tuple[str, float]:
         """
         scores is a dict of shape {url: score} for each server
         """
@@ -81,15 +88,13 @@ class LeastBusy(MetricsBasedStrategy):
         candidates = [k for k, v in scores.items() if v == min_value]
         return random.choice(candidates), min_value
 
-    def choose_server(self) -> (VLLMServer, float | None):
+    def choose_server(self) -> tuple[VLLMServer, float | None]:
         scores = {}
         url_least_busy = None
         current_time_to_first_token = None
 
         for url in self.tracker.urls:
-            tft_histogram = self.tracker.time_to_first_token_diff_histograms[url]
-            tft_bucket_95 = LeastBusy.get_percentile(tft_histogram)
-            scores[url] = LeastBusy.business_score(tft_bucket_95)
+            scores[url] = self.get_server_score(url)
 
             # edge case: when a server has never received any request,
             # histograms are not exposed and so business score is -1
