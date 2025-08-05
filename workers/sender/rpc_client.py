@@ -85,7 +85,7 @@ class RPCClient:
         threshold: int,
         model: str,
         organization: str,
-        local_priority_model: str,
+        routing_mode: str,
     ) -> Union[AbstractIncomingMessage, CallResult]:
         model_queue = await self.channel.get_queue(name=model)
         nb_messages = model_queue.declaration_result.message_count
@@ -99,7 +99,7 @@ class RPCClient:
         future = loop.create_future()
         self.futures[correlation_id] = future
 
-        if local_priority_model == "any":
+        if routing_mode == "any":
             await self.channel.default_exchange.publish(
                 message=Message(
                     body=b"AVAILABLE?",
@@ -114,7 +114,7 @@ class RPCClient:
 
         else:
             payload = {
-                "local_priority_model": local_priority_model,
+                "routing_mode": routing_mode,
                 "organization": organization,
             }
             await self.channel.default_exchange.publish(

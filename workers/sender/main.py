@@ -200,18 +200,18 @@ async def proxy(request: Request, call_next):
             status_code=404,
         )
 
-    local_priority_model = json_body.get("local-priority-model", "any")
-    if local_priority_model not in ["any", "private-first", "private-only"]:
+    routing_mode = json_body.get("routing-mode", "any")
+    if routing_mode not in ["any", "private-first", "private-only"]:
         return JSONResponse(
             content={
                 "object": "error",
-                "message": f"local priority model: {local_priority_model} not recognized: must either be 'any', 'private-first' or 'private-only'",
+                "message": f"local priority model: {routing_mode} not recognized: must either be 'any', 'private-first' or 'private-only'",
             },
             status_code=400,
         )
 
     if (
-        local_priority_model != "any"
+        routing_mode != "any"
         and user.organization not in settings.MODEL_HOST_MAPPING[requested_model]
     ):
         return JSONResponse(
@@ -228,7 +228,7 @@ async def proxy(request: Request, call_next):
             threshold,
             requested_model,
             user.organization,
-            local_priority_model,
+            routing_mode,
         )
     except ChannelClosed:
         # the queue may have been deleted (ex: consumer does not exist anymore)

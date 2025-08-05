@@ -184,7 +184,7 @@ class RPCServer:
     async def server_specific_callback(self, message: AbstractIncomingMessage):
         try:
             data = json.loads(message.body.decode("utf-8"))
-            local_priority_model = data.get("local_priority_model")
+            routing_mode = data.get("routing_mode")
             organization = data.get("organization")
             priority = self.priority_handler.apply_priority(message.priority)
 
@@ -197,10 +197,10 @@ class RPCServer:
             score = self.strategy.get_server_score(target_server.url)
 
             target_requeue = None
-            if local_priority_model == "private-first":
+            if routing_mode == "private-first":
                 target_requeue = self.queue
-            elif local_priority_model != "private-only":
-                raise UnknownLocalPriorityModel(local_priority_model)
+            elif routing_mode != "private-only":
+                raise UnknownLocalPriorityModel(routing_mode)
 
             if not self.quality_of_service_policy.apply_policy(
                 score,

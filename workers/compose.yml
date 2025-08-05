@@ -31,7 +31,7 @@ services:
       DB_DATABASE: test
       MODEL_HOST_MAPPING: >
         {
-          "casperhansen/llama-3.3-70b-instruct-awq": ["centrale-supelec"]
+          "Qwen/Qwen2-0.5B-Instruct": ["centralesupelec"]
         }
     restart: on-failure
     depends_on:
@@ -48,7 +48,7 @@ services:
         {
           "http://host.docker.internal:8000": {
             "token": "your-token-here",
-            "organization": "centrale-supelec"
+            "organization": "centralesupelec"
           }
         }
       ROUTING_STRATEGY: least-busy
@@ -94,7 +94,7 @@ services:
       - priority
       - --trust-remote-code
       - --model
-      - "casperhansen/llama-3.3-70b-instruct-awq"
+      - "Qwen/Qwen2-0.5B-Instruct"
     environment:
       VLLM_PORT: 8000
       VLLM_CPU_KVCACHE_SPACE: 6
@@ -122,4 +122,4 @@ services:
 
 volumes:
   postgres-data:
-  mysql-data:
+
