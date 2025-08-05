@@ -185,7 +185,6 @@ class RPCServer:
         try:
             data = json.loads(message.body.decode("utf-8"))
             local_priority_model = data.get("local_priority_model")
-            # ne peut plus être que private only ou private first vu qu'il a aterri dans cette queue'
             organization = data.get("organization")
             priority = self.priority_handler.apply_priority(message.priority)
 
