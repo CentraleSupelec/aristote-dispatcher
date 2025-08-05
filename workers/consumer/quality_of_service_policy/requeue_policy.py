@@ -23,7 +23,13 @@ class RequeuePolicy(QualityOfServiceBasePolicy):
             (performance_indicator > self.performance_threshold)
             or (current_parallel_requests >= settings.MAX_PARALLEL_REQUESTS)
         ):
-            logging.info("QoS policy deferred the message; requeuing.")
+            logging.info(
+                "QoS policy deferred the message; requeuing. performance_indicator: %s, self.performance_threshold: %s, current_parallel_requests: %s, max_parallel_requests: %s",
+                performance_indicator,
+                self.performance_threshold,
+                current_parallel_requests,
+                settings.MAX_PARALLEL_REQUESTS,
+            )
             asyncio.create_task(self._delayed_nack(message))
             return False
         return True
