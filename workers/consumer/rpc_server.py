@@ -191,6 +191,9 @@ class RPCServer:
             scores[server] = self.strategy.get_server_score(server.url)
             if scores[server] == -1:
                 return server, -1
+        has_none = any(value is None for value in scores.values())
+        if has_none:
+            return random.choice([k for k, _ in scores.items()])
         min_value = min(scores.values())
         return (
             random.choice([k for k, v in scores.items() if v == min_value]),
