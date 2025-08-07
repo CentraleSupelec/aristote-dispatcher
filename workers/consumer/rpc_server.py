@@ -1,5 +1,7 @@
 import json
 import logging
+import random
+from typing import List
 
 from aio_pika import DeliveryMode, Message, connect_robust
 from aio_pika.abc import (
@@ -181,6 +183,20 @@ class RPCServer:
         except Exception as e:
             logging.error("Error processing completion message: %s", e)
 
+    def choose_among_duplicates(
+        self, duplicates: List[VLLMServer]
+    ) -> tuple[VLLMServer, float | None]:
+        scores = {}
+        for server in duplicates:
+            scores[server] = self.strategy.get_server_score(server.url)
+            if scores[server] == -1:
+                return server, -1
+        min_value = min(scores.values())
+        return (
+            random.choice([k for k, v in scores.items() if v == min_value]),
+            min_value,
+        )
+
     async def server_specific_callback(self, message: AbstractIncomingMessage):
         try:
             data = json.loads(message.body.decode("utf-8"))
@@ -188,13 +204,12 @@ class RPCServer:
             organization = data.get("organization")
             priority = self.priority_handler.apply_priority(message.priority)
 
-            target_server = None
-            for server in settings.VLLM_SERVERS:
-                if server.organization == organization:
-                    target_server = server
-            if not target_server:
-                raise ServerNotFound()
-            score = self.strategy.get_server_score(target_server.url)
+            matching_servers = [
+                server
+                for server in settings.VLLM_SERVERS
+                if server.organization == organization
+            ]
+            target_server, score = self.choose_among_duplicates(matching_servers)
 
             target_requeue = None
             if routing_mode == "private-first":
