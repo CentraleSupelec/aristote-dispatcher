@@ -222,9 +222,11 @@ async def proxy(request: Request, call_next):
             status_code=400,
         )
 
+    priority = min(json_body.get("priority", user.priority), user.priority)
+
     try:
         rpc_response = await rpc_client.call(
-            user.priority,
+            priority,
             threshold,
             requested_model,
             user.organization,
