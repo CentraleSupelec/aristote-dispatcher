@@ -200,8 +200,36 @@ async def proxy(request: Request, call_next):
             status_code=404,
         )
 
+    routing_mode = json_body.get("routing-mode", "any")
+    if routing_mode not in ["any", "private-first", "private-only"]:
+        return JSONResponse(
+            content={
+                "object": "error",
+                "message": f"local priority model: {routing_mode} not recognized: must either be 'any', 'private-first' or 'private-only'",
+            },
+            status_code=400,
+        )
+
+    if (
+        routing_mode != "any"
+        and user.organization not in settings.MODEL_HOST_MAPPING[requested_model]
+    ):
+        return JSONResponse(
+            content={
+                "object": "error",
+                "message": f"The requested model {requested_model} is not available for your organization ({user.organization}), so you can't ask for 'private-first' or 'private-only'",
+            },
+            status_code=400,
+        )
+
     try:
-        rpc_response = await rpc_client.call(user.priority, threshold, requested_model)
+        rpc_response = await rpc_client.call(
+            user.priority,
+            threshold,
+            requested_model,
+            user.organization,
+            routing_mode,
+        )
     except ChannelClosed:
         # the queue may have been deleted (ex: consumer does not exist anymore)
         logging.debug(
@@ -230,7 +258,7 @@ async def proxy(request: Request, call_next):
 
     logging.info("RPC response received")
 
-    llm_params = json.loads(rpc_response.body.decode())
+    llm_params = json.loads(rpc_response.body.decode("utf-8"))
     llm_url = llm_params["llmUrl"]
     llm_token = llm_params["llmToken"]
 
