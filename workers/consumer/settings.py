@@ -35,6 +35,7 @@ class Settings(BaseSettings):
         default="warning-log"
     )
     DEFAULT_MAX_PARALLEL_REQUESTS: int = Field(default=20)
+    VLLM_TREATMENT_TIMEOUT_SECONDS: int = Field(default=15)
 
     @property
     def VLLM_SERVERS(self) -> List[VLLMServer]:

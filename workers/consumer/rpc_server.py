@@ -1,3 +1,4 @@
+import asyncio
 import json
 import logging
 import random
@@ -39,8 +40,8 @@ class RPCServer:
         self.channel: AbstractChannel = None
         self.queue: AbstractQueue = None
         self.completion_queue: AbstractQueue = None
-        self.current_parallel_requests: dict[VLLMServer, int] = {
-            server: 0 for server in settings.VLLM_SERVERS
+        self.current_parallel_requests: dict[VLLMServer, set[str]] = {
+            server: set() for server in settings.VLLM_SERVERS
         }
 
     async def first_connect(self) -> None:
@@ -129,7 +130,7 @@ class RPCServer:
             priority = self.priority_handler.apply_priority(message.priority)
             if not self.quality_of_service_policy.apply_policy(
                 performance_indicator,
-                self.current_parallel_requests[vllm_server],
+                len(self.current_parallel_requests[vllm_server]),
                 vllm_server.max_parallel_requests,
                 message,
             ):
@@ -151,7 +152,12 @@ class RPCServer:
             )
             await message.ack()
             if vllm_server:
-                self.current_parallel_requests[vllm_server] += 1
+                self.current_parallel_requests[vllm_server].add(
+                    str(message.correlation_id)
+                )
+                asyncio.create_task(
+                    self._expire_request(vllm_server, str(message.correlation_id))
+                )
             logging.info("LLM URL for model %s sent to API", MODEL)
         except Exception as e:
             logging.error("An error occurred while publishing message: %s", e)
@@ -173,11 +179,13 @@ class RPCServer:
                     used_server = server
 
             if used_server:
-                self.current_parallel_requests[used_server] = max(
-                    self.current_parallel_requests[used_server] - 1, 0
+                self.current_parallel_requests[used_server].discard(
+                    str(data.get("message_id"))
                 )
             logging.debug(
-                "self.current_parallel_requests = %s", self.current_parallel_requests
+                "number of current parallel requests for server %s = %s",
+                used_server,
+                len(self.current_parallel_requests[used_server]),
             )
             await message.ack()
         except Exception as e:
@@ -222,7 +230,7 @@ class RPCServer:
 
             if not self.quality_of_service_policy.apply_policy(
                 score,
-                self.current_parallel_requests[target_server],
+                len(self.current_parallel_requests[target_server]),
                 target_server.max_parallel_requests,
                 message,
                 target_requeue,
@@ -243,7 +251,12 @@ class RPCServer:
                 routing_key=message.reply_to,
             )
             await message.ack()
-            self.current_parallel_requests[target_server] += 1
+            self.current_parallel_requests[target_server].add(
+                str(message.correlation_id)
+            )
+            asyncio.create_task(
+                self._expire_request(target_server, str(message.correlation_id))
+            )
             logging.info("LLM URL for model %s sent to API", MODEL)
         except Exception as e:
             logging.error("Error processing server specific message: %s", e)
@@ -253,3 +266,13 @@ class RPCServer:
             if not self.connection.is_closed and not self.channel.is_closed:
                 return True
         return False
+
+    async def _expire_request(self, vllm_server, correlation_id: str):
+        await asyncio.sleep(settings.VLLM_TREATMENT_TIMEOUT_SECONDS)
+        if correlation_id in self.current_parallel_requests[vllm_server]:
+            logging.info(
+                "Force removing request %s from counter; no response for %ss",
+                correlation_id,
+                settings.VLLM_TREATMENT_TIMEOUT_SECONDS,
+            )
+        self.current_parallel_requests[vllm_server].discard(correlation_id)
