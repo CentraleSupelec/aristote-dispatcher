@@ -17,7 +17,6 @@ class RequeuePolicy(QualityOfServiceBasePolicy):
     async def _transfer_message(
         self, msg: AbstractIncomingMessage, queue: AbstractQueue, exchange: Exchange
     ):
-        await asyncio.sleep(settings.METRICS_REFRESH_RATE)
         await exchange.publish(
             message=Message(
                 body=b"AVAILABLE?",
