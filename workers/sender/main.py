@@ -200,7 +200,8 @@ async def proxy(request: Request, call_next):
             status_code=404,
         )
 
-    routing_mode = json_body.get("routing-mode", "any")
+    default_routing_mode = user.default_routing_mode
+    routing_mode = json_body.get("routing-mode", default_routing_mode)
     if routing_mode not in ["any", "private-first", "private-only"]:
         return JSONResponse(
             content={
