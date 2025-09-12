@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String
+from sqlalchemy import Column, Enum, Integer, String
 
 from .base import Base
 
@@ -13,3 +13,8 @@ class User(Base):
     priority = Column(Integer, nullable=False)
     threshold = Column(Integer, nullable=False)
     client_type = Column(String)
+    default_routing_mode = Column(
+        Enum("any", "private-first", "private-only", native_enum=False),
+        nullable=False,
+        default="any",
+    )
