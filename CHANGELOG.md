@@ -5,15 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.4.0] - 2025-09-17
 
 ### Added
 - ✨ Local priority to enable the user to prioritize vllm instances of its organization (!38)
+- ✨ Default local priority mode set in user token (!46)
 - ✨ Users can now degrade their own priority (useful for testing purposes) (!40)
 - ✨ Script to handily create users/tokens in the cluster (!41)
 
 ### Fixed
-- 🩹 Counter for current concurrent requests in a vllm instance is now automatically decremented after some time, to fix a bug where decrements are missed
+- 🩹 Counter for current concurrent requests in a vllm instance is now automatically decremented after some time, to fix a bug where decrements are missed (!42)
 
 ## [1.3.1] - 2025-08-05
 
