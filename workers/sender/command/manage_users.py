@@ -16,6 +16,10 @@ def add_user(
     organization: str = typer.Option(..., help="Organization name (required)"),
     email: str = typer.Option(..., help="Email address (required)"),
     client_type: str = typer.Option(None, help="Client type (optional, omit for NULL)"),
+    default_routing_mode: str = typer.Option(
+        "any",
+        help="Routing mode (choices: any, private-first, private-only)",
+    ),
 ):
     """
     Insert a new user into the database with ORM (SQLAlchemy).
@@ -32,6 +36,7 @@ def add_user(
             name=name,
             organization=organization,
             email=email,
+            default_routing_mode=default_routing_mode,
         )
         session.add(new_user)
 
