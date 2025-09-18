@@ -1,10 +1,18 @@
 import json
 import logging
 from typing import List, Literal, Optional
+from urllib.parse import urlparse
 
 from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings
 
+from .constants import (
+    IGNORE_PRIORITY_HANDLER,
+    WARNING_LOG_QOS,
+    AllowedPriorityHandlers,
+    AllowedQualityOfServicePolicies,
+    AllowedRoutingStrategies,
+)
 from .vllm_server import VLLMServer
 
 
@@ -23,18 +31,18 @@ class Settings(BaseSettings):
     DEFAULT_VLLM_SERVERS: str = Field(default=None, alias="VLLM_SERVERS")
     MAX_VLLM_CONNECTION_ATTEMPTS: int = Field(default=100)
     INITIAL_METRICS_WAIT: int = Field(default=5)
-    ROUTING_STRATEGY: Literal["least-busy", "round-robin"] = Field(default=None)
-    PRIORITY_HANDLER: Literal["ignore", "vllm"] = Field(default="ignore")
+    ROUTING_STRATEGY: AllowedRoutingStrategies = Field(default=None)
+    PRIORITY_HANDLER: AllowedPriorityHandlers = Field(default=IGNORE_PRIORITY_HANDLER)
     BEST_PRIORITY: int = Field(default=5)
     TIME_TO_FIRST_TOKEN_THRESHOLD: Optional[float] = None
     METRICS_REFRESH_RATE: int = Field(ge=1, default=1)  # in seconds
     REFRESH_COUNT_PER_WINDOW: int = Field(ge=1, default=24)
     # A time window would then be of duration METRICS_REFRESH_RATE * REFRESH_COUNT_PER_WINDOW
     PING_REFRESH_RATE: int = Field(ge=1, default=30)  # in seconds
-    QUALITY_OF_SERVICE_POLICY: Literal["warning-log", "requeue"] = Field(
-        default="warning-log"
+    QUALITY_OF_SERVICE_POLICY: AllowedQualityOfServicePolicies = Field(
+        default=WARNING_LOG_QOS
     )
-    DEFAULT_MAX_PARALLEL_REQUESTS: int = Field(default=20)
+    DEFAULT_MAX_PARALLEL_REQUESTS: int = Field(default=100)
     VLLM_TREATMENT_TIMEOUT_SECONDS: int = Field(default=15)
 
     @property
@@ -54,11 +62,23 @@ class Settings(BaseSettings):
                     f"Each VLLM server must be a JSON object, got {type(config)} at {url}"
                 )
 
+            parsed_url = urlparse(url)
+            if not all([parsed_url.scheme.startswith("http"), parsed_url.netloc]):
+                raise ValueError(
+                    f"LLM inference server key definition must be a valid http url, got: {url}"
+                )
+
+            organization = config.get("organization", "")
+            if organization == "":
+                raise ValueError(
+                    f"No organization found in LLM server {url} configuration"
+                )
+
             servers.append(
                 VLLMServer(
                     url=url,
                     token=config.get("token"),
-                    organization=config["organization"],
+                    organization=organization,
                     max_parallel_requests=config.get(
                         "max_parallel_requests", self.DEFAULT_MAX_PARALLEL_REQUESTS
                     ),

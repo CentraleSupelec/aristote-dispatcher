@@ -2,7 +2,7 @@ import asyncio
 import json
 import logging
 import random
-from typing import List
+from typing import Dict, List
 
 from aio_pika import DeliveryMode, Message, connect_robust
 from aio_pika.abc import (
@@ -40,7 +40,9 @@ class RPCServer:
         self.channel: AbstractChannel = None
         self.queue: AbstractQueue = None
         self.completion_queue: AbstractQueue = None
-        self.current_parallel_requests: dict[VLLMServer, set[str]] = {
+        # VLLMServer can be used as dict key because it is a dataclass with frozen and eq set to True
+        # so a hash is used: https://github.com/python/cpython/blob/main/Lib/dataclasses.py#L891
+        self.current_parallel_requests: Dict[VLLMServer, set[str]] = {
             server: set() for server in settings.VLLM_SERVERS
         }
 
@@ -135,7 +137,10 @@ class RPCServer:
                 message,
             ):
                 return
-            llm_params = {"llmUrl": vllm_server.url, "llmToken": vllm_server.token}
+            llm_params: Dict[str, str | int | None] = {
+                "llmUrl": vllm_server.url,
+                "llmToken": vllm_server.token,
+            }
             if priority is not None and isinstance(priority, int):
                 llm_params["priority"] = priority
         except ServerNotFound:
@@ -178,7 +183,7 @@ class RPCServer:
                 if server.url == server_url:
                     used_server = server
 
-            if used_server:
+            if used_server is not None:
                 self.current_parallel_requests[used_server].discard(
                     str(data.get("message_id"))
                 )

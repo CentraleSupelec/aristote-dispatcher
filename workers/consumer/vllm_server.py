@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, eq=True)
 class VLLMServer:
     url: str
     token: str | None

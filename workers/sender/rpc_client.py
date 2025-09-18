@@ -149,7 +149,11 @@ class RPCClient:
                 ),
                 routing_key=routing_key,
             )
-            logging.debug("Sent completion message to %s", routing_key)
+            logging.debug(
+                "Sent completion message to %s  (id: %s)",
+                routing_key,
+                payload.get("message_id", "ID NOT FOUND"),
+            )
         except Exception as e:
             logging.error("Failed to send completion message: %s", e)
 

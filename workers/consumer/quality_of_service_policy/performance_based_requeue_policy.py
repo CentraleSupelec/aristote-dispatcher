@@ -1,34 +1,15 @@
 import asyncio
 import logging
 
-from aio_pika import DeliveryMode, Exchange, Message
+from aio_pika import Exchange
 from aio_pika.abc import AbstractIncomingMessage, AbstractQueue
 
 from ..settings import settings
 from .qos_policy import QualityOfServiceBasePolicy
+from .utils import send_delayed_nack, transfer_message_to_exchange
 
 
-class RequeuePolicy(QualityOfServiceBasePolicy):
-
-    async def _delayed_nack(self, msg: AbstractIncomingMessage):
-        await asyncio.sleep(settings.METRICS_REFRESH_RATE)
-        await msg.nack(requeue=True)
-
-    async def _transfer_message(
-        self, msg: AbstractIncomingMessage, queue: AbstractQueue, exchange: Exchange
-    ):
-        await exchange.publish(
-            message=Message(
-                body=b"AVAILABLE?",
-                delivery_mode=DeliveryMode.PERSISTENT,
-                correlation_id=msg.correlation_id,
-                reply_to=msg.reply_to,
-                priority=msg.priority,
-            ),
-            routing_key=queue.name,
-        )
-        await msg.ack()
-
+class PerformanceBasedRequeuePolicy(QualityOfServiceBasePolicy):
     def apply_policy(
         self,
         performance_indicator: float | None,
@@ -51,9 +32,9 @@ class RequeuePolicy(QualityOfServiceBasePolicy):
             )
             if target_requeue:
                 asyncio.create_task(
-                    self._transfer_message(message, target_requeue, exchange)
+                    transfer_message_to_exchange(message, target_requeue, exchange)
                 )
             else:
-                asyncio.create_task(self._delayed_nack(message))
+                asyncio.create_task(send_delayed_nack(message))
             return False
         return True

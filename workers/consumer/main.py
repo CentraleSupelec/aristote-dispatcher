@@ -2,6 +2,15 @@ import asyncio
 import logging
 import signal
 
+from .constants import (
+    IGNORE_PRIORITY_HANDLER,
+    LEAST_BUSY,
+    PARALLEL_REQUESTS_THRESHOLD_REQUEUE_QOS,
+    PERFORMANCE_BASED_REQUEUE_QOS,
+    ROUND_ROBIN,
+    VLLM_PRIORITY_HANDLER,
+    WARNING_LOG_QOS,
+)
 from .exceptions import UnknownPriorityHandler, UnknownQOSPolicy, UnknownStrategy
 from .metrics import wait_for_vllms
 from .priority_handler.ignore_priority_handler import (
@@ -9,7 +18,12 @@ from .priority_handler.ignore_priority_handler import (
 )
 from .priority_handler.vllm_priority_handler import VllmPriorityHandler
 from .probes import Prober
-from .quality_of_service_policy.requeue_policy import RequeuePolicy
+from .quality_of_service_policy.parallel_requests_threshold_requeue_policy import (
+    ParallelRequestsThresholdRequeuePolicy,
+)
+from .quality_of_service_policy.performance_based_requeue_policy import (
+    PerformanceBasedRequeuePolicy,
+)
 from .quality_of_service_policy.warning_log_policy import WarningLogPolicy
 from .rpc_server import RPCServer
 from .server_pinger import ServerPinger
@@ -21,18 +35,11 @@ from .strategy.server_selection_strategy import ServerSelectionStrategy
 
 VLLM_SERVERS = settings.VLLM_SERVERS
 RABBITMQ_URL = settings.RABBITMQ_URL
-
 ROUTING_STRATEGY = settings.ROUTING_STRATEGY
-LEAST_BUSY = "least-busy"
-ROUND_ROBIN = "round-robin"
-IGNORE_PRIORITY_HANDLER = "ignore"
-VLLM_PRIORITY_HANDLER = "vllm"
 TIME_TO_FIRST_TOKEN_THRESHOLD = settings.TIME_TO_FIRST_TOKEN_THRESHOLD
 METRICS_REFRESH_RATE = settings.METRICS_REFRESH_RATE
 REFRESH_COUNT_PER_WINDOW = settings.REFRESH_COUNT_PER_WINDOW
 PING_REFRESH_RATE = settings.PING_REFRESH_RATE
-WARNING_LOG_QOS = "warning-log"
-REQUEUE_QOS = "requeue"
 
 shutdown_signal = asyncio.Event()
 
@@ -96,8 +103,12 @@ if __name__ == "__main__":
 
     if settings.QUALITY_OF_SERVICE_POLICY == WARNING_LOG_QOS:
         quality_of_service_policy = WarningLogPolicy(TIME_TO_FIRST_TOKEN_THRESHOLD)
-    elif settings.QUALITY_OF_SERVICE_POLICY == REQUEUE_QOS:
-        quality_of_service_policy = RequeuePolicy(TIME_TO_FIRST_TOKEN_THRESHOLD)
+    elif settings.QUALITY_OF_SERVICE_POLICY == PERFORMANCE_BASED_REQUEUE_QOS:
+        quality_of_service_policy = PerformanceBasedRequeuePolicy(
+            TIME_TO_FIRST_TOKEN_THRESHOLD
+        )
+    elif settings.QUALITY_OF_SERVICE_POLICY == PARALLEL_REQUESTS_THRESHOLD_REQUEUE_QOS:
+        quality_of_service_policy = ParallelRequestsThresholdRequeuePolicy(None)
     else:
         raise UnknownQOSPolicy(settings.QUALITY_OF_SERVICE_POLICY)
 

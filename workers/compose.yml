@@ -43,18 +43,19 @@ services:
       context: ./consumer
     environment:
       LOG_LEVEL: 10
-      MODEL: casperhansen/llama-3.3-70b-instruct-awq
+      MODEL: Qwen/Qwen2-0.5B-Instruct
       VLLM_SERVERS: >
         {
           "http://host.docker.internal:8000": {
-            "token": "your-token-here",
-            "organization": "centralesupelec"
+            "token": "secret_key",
+            "organization": "centralesupelec",
+            "max_parallel_requests": 20
           }
         }
-      ROUTING_STRATEGY: least-busy
+      ROUTING_STRATEGY: round-robin
       TIME_TO_FIRST_TOKEN_THRESHOLD: 0.5
       PRIORITY_HANDLER: "ignore"
-      QUALITY_OF_SERVICE_POLICY: "requeue"
+      QUALITY_OF_SERVICE_POLICY: "parallel-requests-threshold-requeue"
     restart: on-failure
     depends_on:
       - rabbitmq
