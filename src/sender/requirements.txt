@@ -1,4 +1,6 @@
 aio_pika==9.5.5
+alembic>=1.16.5
+black==25.1.0
 fastapi[standard]
 asyncpg==0.30.0
 aiomysql==0.2.0

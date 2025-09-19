@@ -16,21 +16,16 @@ class Settings(BaseSettings):
     MESSAGE_TIMEOUT: int = Field(default=570)  # 9m30s in seconds
     PROXY_CLIENT_REQUEST_TIMEOUT: int = Field(default=600)
 
-    DB_TYPE: Literal["mysql", "postgresql"] = Field(default="mysql")
-    DB_HOST: str = Field()
-    DB_PORT: int = Field(default=3306)
-    DB_USER: str = Field()
-    DB_PASSWORD: str = Field()
-    DB_DATABASE: str = Field()
+    DATABASE_URL: str = Field(
+        default="postgresql+psycopg2://user:password@postgres:5432/test"
+    )
 
     DEFAULT_MODEL_HOST_MAPPING: str = Field(default=None, alias="MODEL_HOST_MAPPING")
 
     @model_validator(mode="after")
     def check_required_fields(self):
         missing_fields = [
-            field
-            for field in ["DB_HOST", "DB_USER", "DB_PASSWORD", "DB_DATABASE"]
-            if not getattr(self, field, None)
+            field for field in ["DATABASE_URL"] if not getattr(self, field, None)
         ]
         if missing_fields:
             raise ValueError(f"Missing required fields: {', '.join(missing_fields)}")

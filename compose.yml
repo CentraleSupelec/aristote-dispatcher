@@ -19,21 +19,27 @@ services:
   sender:
     build:
       dockerfile: Dockerfile.sender
+    command:
+      - fastapi
+      - dev
+      - src/sender/main.py
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8080"
     ports:
       - "8080:8080"
     environment:
       LOG_LEVEL: 20
-      DB_TYPE: postgresql
-      DB_PORT: 5432
-      DB_HOST: postgres
-      DB_USER: user
-      DB_PASSWORD: password
-      DB_DATABASE: test
+      DATABASE_URL: postgresql+psycopg2://user:password@postgres:5432/test
       MODEL_HOST_MAPPING: >
         {
           "Qwen/Qwen2-0.5B-Instruct": ["centralesupelec"]
         }
     restart: on-failure
+    volumes:
+      - ./src/sender:/app/src/sender
+      - ./alembic:/app/alembic
     depends_on:
       - rabbitmq
       - postgres

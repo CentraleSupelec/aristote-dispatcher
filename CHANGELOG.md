@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - ♻️ Clean code (imports) and changed projects structure (#47)
+- 🗃️ Manage database with migrations (using `alembic`) (#47)
 
 ### Fixed
 - 🩹 Counter for current concurrent requests in a vllm instance is now automatically decremented after some time, to fix
