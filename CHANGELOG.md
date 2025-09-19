@@ -5,27 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.4.0] - 2025-09-17
+## [Unreleased]
 
 ### Added
-- ✨ Local priority to enable the user to prioritize vllm instances of its organization (!38)
-- ✨ Default local priority mode set in user token (!46)
-- ✨ Users can now degrade their own priority (useful for testing purposes) (!40)
-- ✨ Script to handily create users/tokens in the cluster (!41)
+- ✨ Local priority to enable the user to prioritize vllm instances of its organization (#38)
+- ✨ Default local priority mode set in user token (#46)
+- ✨ Users can now degrade their own priority (useful for testing purposes) (#40)
+- ✨ Script to handily create users/tokens in the cluster (#41)
+- ✨ Add new requeue policy compatible with round-robin routing strategy (#47)
+
+### Changed
+- ♻️ Clean code (imports) and changed projects structure (#47)
 
 ### Fixed
-- 🩹 Counter for current concurrent requests in a vllm instance is now automatically decremented after some time, to fix a bug where decrements are missed (!42)
+- 🩹 Counter for current concurrent requests in a vllm instance is now automatically decremented after some time, to fix
+a bug where decrements are missed (#42)
 
 ## [1.3.1] - 2025-08-05
 
 ### Fixed
-- 🩹 Add information in requeue policy log message (!39)
+- 🩹 Add information in requeue policy log message (#39)
 
 ## [1.3.0] - 2025-07-25
 
 ### Added
-- ✨ Ping remote LLM servers regularly and exclude them (if possible) if they are not healthy (!31)
-- ✨ Add control on the maximum number of simultaneous requests handled by the gateway, with requeue support for extra requests until remote LLM servers are available (!37)
+- ✨ Ping remote LLM servers regularly and exclude them (if possible) if they are not healthy (#31)
+- ✨ Add control on the maximum number of simultaneous requests handled by the gateway, with requeue support for extra requests until remote LLM servers are available (#37)
 
 ## [1.2.13]
 

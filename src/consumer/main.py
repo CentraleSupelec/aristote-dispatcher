@@ -1,0 +1,142 @@
+import asyncio
+import logging
+import signal
+
+from src.consumer.constants import (
+    IGNORE_PRIORITY_HANDLER,
+    LEAST_BUSY,
+    PARALLEL_REQUESTS_THRESHOLD_REQUEUE_QOS,
+    PERFORMANCE_BASED_REQUEUE_QOS,
+    ROUND_ROBIN,
+    VLLM_PRIORITY_HANDLER,
+    WARNING_LOG_QOS,
+)
+from src.consumer.exceptions import (
+    UnknownPriorityHandler,
+    UnknownQOSPolicy,
+    UnknownStrategy,
+)
+from src.consumer.metrics import wait_for_vllms
+from src.consumer.priority_handler.ignore_priority_handler import (
+    IgnorePriorityHandler,
+)
+from src.consumer.priority_handler.vllm_priority_handler import VllmPriorityHandler
+from src.consumer.probes import Prober
+from src.consumer.quality_of_service_policy.parallel_requests_threshold_requeue_policy import (
+    ParallelRequestsThresholdRequeuePolicy,
+)
+from src.consumer.quality_of_service_policy.performance_based_requeue_policy import (
+    PerformanceBasedRequeuePolicy,
+)
+from src.consumer.quality_of_service_policy.warning_log_policy import WarningLogPolicy
+from src.consumer.rpc_server import RPCServer
+from src.consumer.server_pinger import ServerPinger
+from src.consumer.settings import settings
+from src.consumer.strategy.least_busy import LeastBusy
+from src.consumer.strategy.metrics_based_strategy import MetricsBasedStrategy
+from src.consumer.strategy.round_robin import RoundRobin
+from src.consumer.strategy.server_selection_strategy import ServerSelectionStrategy
+
+VLLM_SERVERS = settings.VLLM_SERVERS
+RABBITMQ_URL = settings.RABBITMQ_URL
+ROUTING_STRATEGY = settings.ROUTING_STRATEGY
+TIME_TO_FIRST_TOKEN_THRESHOLD = settings.TIME_TO_FIRST_TOKEN_THRESHOLD
+METRICS_REFRESH_RATE = settings.METRICS_REFRESH_RATE
+REFRESH_COUNT_PER_WINDOW = settings.REFRESH_COUNT_PER_WINDOW
+PING_REFRESH_RATE = settings.PING_REFRESH_RATE
+
+shutdown_signal = asyncio.Event()
+
+
+async def main_consumer(p_strategy: ServerSelectionStrategy, p_rpc_server: RPCServer):
+    await wait_for_vllms(VLLM_SERVERS)
+
+    await p_rpc_server.first_connect()
+
+    pinger = ServerPinger(
+        servers=VLLM_SERVERS,
+        time_interval=PING_REFRESH_RATE,
+        strategy=p_strategy,
+    )
+    await pinger.monitor()
+
+    # Consumer is running until shutdown signal is received
+    # Until then, all action occurs in the on_message_callback
+    # of the RPCServer class
+    await shutdown_signal.wait()
+
+    await p_rpc_server.close()
+
+    await pinger.stop_monitor()
+
+    # we need to explicitly stop monitoring
+    if isinstance(p_strategy, MetricsBasedStrategy):
+        await p_strategy.tracker.stop_monitor()
+
+
+def shutdown():
+    logging.info("Shutting down consumer...")
+    shutdown_signal.set()
+
+
+if __name__ == "__main__":
+    logging.info("Starting consumer")
+
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+
+    if ROUTING_STRATEGY == LEAST_BUSY:
+        strategy = loop.run_until_complete(
+            LeastBusy.create(
+                VLLM_SERVERS,
+                METRICS_REFRESH_RATE,
+                REFRESH_COUNT_PER_WINDOW,
+            )
+        )  # monitoring starts via the LeastBusy create method, no need to explicitly start it here
+    elif ROUTING_STRATEGY == ROUND_ROBIN:
+        strategy = RoundRobin(VLLM_SERVERS)
+    else:
+        raise UnknownStrategy(ROUTING_STRATEGY)
+
+    if settings.PRIORITY_HANDLER == IGNORE_PRIORITY_HANDLER:
+        priority_handler = IgnorePriorityHandler(settings.BEST_PRIORITY)
+    elif settings.PRIORITY_HANDLER == VLLM_PRIORITY_HANDLER:
+        priority_handler = VllmPriorityHandler(settings.BEST_PRIORITY)
+    else:
+        raise UnknownPriorityHandler(settings.PRIORITY_HANDLER)
+
+    if settings.QUALITY_OF_SERVICE_POLICY == WARNING_LOG_QOS:
+        quality_of_service_policy = WarningLogPolicy(TIME_TO_FIRST_TOKEN_THRESHOLD)
+    elif settings.QUALITY_OF_SERVICE_POLICY == PERFORMANCE_BASED_REQUEUE_QOS:
+        quality_of_service_policy = PerformanceBasedRequeuePolicy(
+            TIME_TO_FIRST_TOKEN_THRESHOLD
+        )
+    elif settings.QUALITY_OF_SERVICE_POLICY == PARALLEL_REQUESTS_THRESHOLD_REQUEUE_QOS:
+        quality_of_service_policy = ParallelRequestsThresholdRequeuePolicy(None)
+    else:
+        raise UnknownQOSPolicy(settings.QUALITY_OF_SERVICE_POLICY)
+
+    rpc_server = RPCServer(
+        url=RABBITMQ_URL,
+        strategy=strategy,
+        quality_of_service_policy=quality_of_service_policy,
+        priority_handler=priority_handler,
+    )
+
+    prober = Prober(rpc_server)
+
+    for sig in (signal.SIGINT, signal.SIGTERM):
+        loop.add_signal_handler(sig, shutdown)
+
+    if settings.USE_PROBES:
+        loop.run_until_complete(prober.setup())
+
+    try:
+        loop.run_until_complete(main_consumer(strategy, rpc_server))
+    except Exception as e:
+        logging.fatal("Consumer fatal error: %s", e)
+        raise
+    finally:
+        if settings.USE_PROBES:
+            loop.run_until_complete(prober.cleanup())
+        loop.close()
