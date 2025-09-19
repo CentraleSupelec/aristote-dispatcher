@@ -30,8 +30,8 @@ jobs:
       - name: Install project dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r workers/sender/requirements.txt
-          pip install -r workers/consumer/requirements.txt
+          pip install -r src/sender/requirements.txt
+          pip install -r src/consumer/requirements.txt
           pip install .[dev]
 
       - name: Run black
@@ -44,7 +44,7 @@ jobs:
 
       - name: Run pylint with custom exit code handling
         run: |
-          pylint workers/sender workers/consumer --exit-zero --output=pylint-out.txt
+          pylint src --exit-zero --output=pylint-out.txt
           cat pylint-out.txt
           if grep -q -E "[EF][0-9]{4}" pylint-out.txt; then
             echo "Pylint found errors"

@@ -1,10 +1,29 @@
-# Helm chart for large scale LLM
+# Aristote Dispatcher
 
 Deployment of LLM at a large scale using VLL server for inference.
 
 ## Introduction
 
 This project originates in the need to optimize the use of GPUs by providing a way to use the same LLM for several concurrent uses and prioritize the most important ones. The prioritization uses a token-based authentication system, where each token has a priority level.
+
+## Development configuration
+
+To test the project locally, you need to have `docker` and `docker-compose` installed.
+
+First, build the project images and start the database:
+
+```bash
+docker compose build
+docker compose up -d postgres
+```
+
+Then, update the database schema by running the scripts inside [src/migrations/postgres](./src/migrations/postgres).
+
+Finally, start all the services (you might need to adjust the vllm configuration):
+
+```bash
+docker compose up -d
+```
 
 ## Architecture
 
