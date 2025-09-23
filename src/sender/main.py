@@ -8,8 +8,10 @@ from aio_pika.exceptions import ChannelClosed
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, PlainTextResponse, StreamingResponse
 from httpx import AsyncClient, Response
+from pydantic import ValidationError
 from starlette.background import BackgroundTask, BackgroundTasks
 
+from src.common.message_data import MessageData
 from src.sender.db import Database
 from src.sender.entities import Metric, User
 from src.sender.exceptions import (
@@ -262,11 +264,21 @@ async def proxy(request: Request, call_next):
 
     logging.info("RPC response received")
 
-    llm_params = json.loads(rpc_response.body.decode("utf-8"))
-    llm_url = llm_params["llmUrl"]
-    llm_token = llm_params["llmToken"]
+    llm_params_dict = json.loads(rpc_response.body.decode("utf-8"))
+    try:
+        llm_params = MessageData(**llm_params_dict)
+    except ValidationError as e:
+        logging.error("Invalid LLMParams message: %s", e)
+        response_content = {
+            "error": "A problem occured while handling the request",
+        }
+        return JSONResponse(content=response_content, status_code=500)
 
-    if llm_url == "None":
+    llm_url = llm_params.llm_url
+    llm_token = llm_params.llm_token
+    llm_forwarded_priority = llm_params.forwarded_priority
+
+    if llm_url is None:
         response_content = {
             "error": f"{requested_model} is busy, try again later",
         }
@@ -287,9 +299,8 @@ async def proxy(request: Request, call_next):
 
     logging.info("LLM Url received : %s", llm_url)
 
-    priority = llm_params.get("priority", None)
-    if priority is not None and isinstance(priority, int):
-        json_body["priority"] = priority
+    if llm_forwarded_priority is not None and isinstance(llm_forwarded_priority, int):
+        json_body["priority"] = llm_forwarded_priority
         body = json.dumps(json_body)
 
     http_client = AsyncClient(
@@ -312,6 +323,12 @@ async def proxy(request: Request, call_next):
         server=llm_url,
         request_date=start,
         sent_to_llm_date=sent_to_llm_date,
+        strategy=llm_params.strategy,
+        requeue_count=llm_params.requeue_count,
+        max_parallel_requests=llm_params.max_parallel_requests,
+        current_parallel_requests=llm_params.current_parallel_requests,
+        priority=priority,
+        performance_score=llm_params.performance_score,
     )
 
     background_tasks = BackgroundTasks(

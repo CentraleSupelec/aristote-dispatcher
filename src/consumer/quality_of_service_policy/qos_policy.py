@@ -1,7 +1,6 @@
 from abc import ABC, abstractmethod
 
-from aio_pika import Exchange
-from aio_pika.abc import AbstractIncomingMessage, AbstractQueue
+from aio_pika.abc import AbstractExchange, AbstractIncomingMessage, AbstractQueue
 
 
 class QualityOfServiceBasePolicy(ABC):  # pylint: disable=too-few-public-methods
@@ -18,8 +17,9 @@ class QualityOfServiceBasePolicy(ABC):  # pylint: disable=too-few-public-methods
         performance_indicator: float | None,
         current_parallel_requests: int,
         max_parallel_requests: int,
+        exchange: AbstractExchange,
         message: AbstractIncomingMessage | None = None,
         target_requeue: AbstractQueue | None = None,
-        exchange: Exchange | None = None,
+        delay: int | None = None,
     ) -> bool:
         pass

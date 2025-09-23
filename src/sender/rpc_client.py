@@ -104,6 +104,7 @@ class RPCClient:
             await self.channel.default_exchange.publish(
                 message=Message(
                     body=b"AVAILABLE?",
+                    headers={"x-requeue-count": 0},
                     delivery_mode=DeliveryMode.PERSISTENT,
                     correlation_id=correlation_id,
                     reply_to=self.callback_queue.name,
@@ -121,6 +122,7 @@ class RPCClient:
             await self.channel.default_exchange.publish(
                 message=Message(
                     body=json.dumps(payload).encode("utf-8"),
+                    headers={"x-requeue-count": 0},
                     delivery_mode=DeliveryMode.PERSISTENT,
                     correlation_id=correlation_id,
                     reply_to=self.callback_queue.name,

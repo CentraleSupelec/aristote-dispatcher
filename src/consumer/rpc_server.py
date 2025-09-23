@@ -11,7 +11,9 @@ from aio_pika.abc import (
     AbstractIncomingMessage,
     AbstractQueue,
 )
+from pydantic.json import pydantic_encoder
 
+from src.common.message_data import MessageData
 from src.consumer.exceptions import ServerNotFound, UnknownLocalPriorityModel
 from src.consumer.priority_handler import BasePriorityHandler
 from src.consumer.quality_of_service_policy.qos_policy import QualityOfServiceBasePolicy
@@ -129,27 +131,41 @@ class RPCServer:
 
         try:
             vllm_server, performance_indicator = self.strategy.choose_server()
-            priority = self.priority_handler.apply_priority(message.priority)
+            priority_to_forward = self.priority_handler.apply_priority(message.priority)
             if not self.quality_of_service_policy.apply_policy(
                 performance_indicator,
                 len(self.current_parallel_requests[vllm_server]),
                 vllm_server.max_parallel_requests,
+                self.channel.default_exchange,
                 message,
+                delay=settings.METRICS_REFRESH_RATE,
             ):
                 return
-            llm_params: dict[str, str | int | None] = {
-                "llmUrl": vllm_server.url,
-                "llmToken": vllm_server.token,
-            }
-            if priority is not None and isinstance(priority, int):
-                llm_params["priority"] = priority
+            llm_params = MessageData(
+                llm_url=vllm_server.url,
+                llm_token=vllm_server.token,
+                strategy=settings.ROUTING_STRATEGY,
+                requeue_count=message.headers.get("x-requeue-count", 0),
+                max_parallel_requests=vllm_server.max_parallel_requests,
+                current_parallel_requests=len(
+                    self.current_parallel_requests[vllm_server]
+                ),
+                forwarded_priority=priority_to_forward,
+                performance_score=performance_indicator,
+            )
         except ServerNotFound:
             vllm_server = None
-            llm_params = {"llmUrl": "None", "llmToken": "None"}
+            llm_params = MessageData(
+                strategy=settings.ROUTING_STRATEGY,
+                requeue_count=message.headers.get("x-requeue-count", 0),
+                max_parallel_requests=settings.DEFAULT_MAX_PARALLEL_REQUESTS,
+            )
         try:
             await self.channel.default_exchange.publish(
                 Message(
-                    body=json.dumps(llm_params).encode("utf-8"),
+                    body=json.dumps(llm_params.dict(), default=pydantic_encoder).encode(
+                        "utf-8"
+                    ),
                     delivery_mode=DeliveryMode.PERSISTENT,
                     correlation_id=str(message.correlation_id),
                 ),
@@ -218,7 +234,7 @@ class RPCServer:
             data = json.loads(message.body.decode("utf-8"))
             routing_mode = data.get("routing_mode")
             organization = data.get("organization")
-            priority = self.priority_handler.apply_priority(message.priority)
+            priority_to_forward = self.priority_handler.apply_priority(message.priority)
 
             matching_servers = [
                 server
@@ -237,19 +253,31 @@ class RPCServer:
                 score,
                 len(self.current_parallel_requests[target_server]),
                 target_server.max_parallel_requests,
+                self.channel.default_exchange,
                 message,
                 target_requeue,
-                self.channel.default_exchange,
+                settings.METRICS_REFRESH_RATE,
             ):
                 return
 
-            llm_params = {"llmUrl": target_server.url, "llmToken": target_server.token}
-            if priority is not None and isinstance(priority, int):
-                llm_params["priority"] = priority
+            llm_params = MessageData(
+                llm_url=target_server.url,
+                llm_token=target_server.token,
+                strategy=settings.ROUTING_STRATEGY,
+                requeue_count=message.headers.get("x-requeue-count", 0),
+                max_parallel_requests=target_server.max_parallel_requests,
+                current_parallel_requests=len(
+                    self.current_parallel_requests[target_server]
+                ),
+                forwarded_priority=priority_to_forward,
+                performance_score=score,
+            )
 
             await self.channel.default_exchange.publish(
                 Message(
-                    body=json.dumps(llm_params).encode("utf-8"),
+                    body=json.dumps(llm_params.dict(), default=pydantic_encoder).encode(
+                        "utf-8"
+                    ),
                     delivery_mode=DeliveryMode.PERSISTENT,
                     correlation_id=str(message.correlation_id),
                 ),

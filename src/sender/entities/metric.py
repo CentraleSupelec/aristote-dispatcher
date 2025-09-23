@@ -1,4 +1,4 @@
-from sqlalchemy import Column, DateTime, ForeignKey, Integer, String
+from sqlalchemy import Column, DateTime, Float, ForeignKey, Integer, String
 
 from src.sender.entities.base import Base
 
@@ -14,3 +14,9 @@ class Metric(Base):
     server = Column(String(length=255))
     prompt_tokens = Column(Integer)
     completion_tokens = Column(Integer)
+    strategy = Column(String(length=255))
+    requeue_count = Column(Integer)
+    max_parallel_requests = Column(Integer, nullable=True)
+    current_parallel_requests = Column(Integer, nullable=True)
+    priority = Column(Integer, nullable=True)
+    performance_score = Column(Float, nullable=True)

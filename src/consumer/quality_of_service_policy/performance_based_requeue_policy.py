@@ -1,14 +1,10 @@
 import asyncio
 import logging
 
-from aio_pika import Exchange
-from aio_pika.abc import AbstractIncomingMessage, AbstractQueue
+from aio_pika.abc import AbstractExchange, AbstractIncomingMessage, AbstractQueue
 
 from src.consumer.quality_of_service_policy.qos_policy import QualityOfServiceBasePolicy
-from src.consumer.quality_of_service_policy.utils import (
-    send_delayed_nack,
-    transfer_message_to_exchange,
-)
+from src.consumer.quality_of_service_policy.utils import requeue
 from src.consumer.settings import settings
 
 
@@ -18,9 +14,10 @@ class PerformanceBasedRequeuePolicy(QualityOfServiceBasePolicy):
         performance_indicator: float | None,
         current_parallel_requests: int,
         max_parallel_requests: int,
+        exchange: AbstractExchange,
         message: AbstractIncomingMessage | None = None,
         target_requeue: AbstractQueue | None = None,
-        exchange: Exchange | None = None,
+        delay: int | None = None,
     ) -> bool:
         if isinstance(performance_indicator, (float, int)) and (
             (performance_indicator > self.performance_threshold)
@@ -33,11 +30,8 @@ class PerformanceBasedRequeuePolicy(QualityOfServiceBasePolicy):
                 current_parallel_requests,
                 settings.MAX_PARALLEL_REQUESTS,
             )
-            if target_requeue:
-                asyncio.create_task(
-                    transfer_message_to_exchange(message, target_requeue, exchange)
-                )
-            else:
-                asyncio.create_task(send_delayed_nack(message))
+            asyncio.create_task(
+                requeue(message, exchange, queue=target_requeue, delay=delay)
+            )
             return False
         return True

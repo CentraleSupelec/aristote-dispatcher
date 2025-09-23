@@ -1,7 +1,6 @@
 import logging
 
-from aio_pika import Exchange
-from aio_pika.abc import AbstractIncomingMessage, AbstractQueue
+from aio_pika.abc import AbstractExchange, AbstractIncomingMessage, AbstractQueue
 
 from src.consumer.quality_of_service_policy.qos_policy import QualityOfServiceBasePolicy
 
@@ -13,9 +12,10 @@ class WarningLogPolicy(QualityOfServiceBasePolicy):
         performance_indicator: float | None,
         current_parallel_requests: int,
         max_parallel_requests: int,
+        exchange: AbstractExchange,
         message: AbstractIncomingMessage | None = None,
         target_requeue: AbstractQueue | None = None,
-        exchange: Exchange | None = None,
+        delay: int | None = None,
     ) -> bool:
         if isinstance(performance_indicator, (float, int)):
             if performance_indicator > self.performance_threshold:
