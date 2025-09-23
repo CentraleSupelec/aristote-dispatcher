@@ -1,0 +1,25 @@
+FROM python:3.12.4-alpine
+
+
+RUN pip install --upgrade pip
+
+RUN adduser --system sender
+USER sender
+WORKDIR /app
+
+COPY --chown=sender:sender src/sender/requirements.txt requirements.txt
+RUN pip install -r requirements.txt
+
+ENV PATH="/home/sender/.local/bin:${PATH}"
+
+COPY --chown=sender:sender ./src/__init__.py src/__init__.py
+COPY --chown=sender:sender ./src/sender src/sender
+COPY --chown=sender:sender ./alembic.ini alembic.ini
+COPY --chown=sender:sender ./alembic alembic
+
+ADD sender-entrypoint.sh .
+ENTRYPOINT  ["/bin/sh", "/app/sender-entrypoint.sh"]
+
+EXPOSE 8080
+
+CMD ["fastapi", "run", "--port", "8080", "src/sender/main.py"]
