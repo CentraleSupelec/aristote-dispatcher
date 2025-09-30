@@ -15,7 +15,7 @@ class RoundRobin(ServerSelectionStrategy):  # pylint: disable=too-few-public-met
         self.round_robin_idx = 0
         await super().update_servers(servers)
 
-    def choose_server(self) -> (VLLMServer, None):
+    def choose_server(self) -> tuple[VLLMServer, None]:
         if self.servers:
             choice = self.servers[self.round_robin_idx]
             self.round_robin_idx = (self.round_robin_idx + 1) % len(self.servers)

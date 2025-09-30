@@ -16,6 +16,7 @@ COPY --chown=sender:sender ./src/__init__.py src/__init__.py
 COPY --chown=sender:sender ./src/sender src/sender
 COPY --chown=sender:sender ./alembic.ini alembic.ini
 COPY --chown=sender:sender ./alembic alembic
+COPY --chown=sender:sender ./src/common src/common
 
 ADD sender-entrypoint.sh .
 ENTRYPOINT  ["/bin/sh", "/app/sender-entrypoint.sh"]
