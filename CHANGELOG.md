@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.0] - 2025-10-06
+
 ### Added
 - ✨ Local priority to enable the user to prioritize vllm instances of its organization (#38)
 - ✨ Default local priority mode set in user token (#46)
