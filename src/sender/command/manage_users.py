@@ -90,8 +90,70 @@ def list_users():
                 f"- ID: {user.id}, Token: {user.token}, Name: {user.name}, "
                 f"Org: {user.organization}, Email: {user.email}, "
                 f"Priority: {user.priority}, Threshold: {user.threshold}, "
-                f"ClientType: {user.client_type}"
+                f"ClientType: {user.client_type}, Default Routing Mode: {user.default_routing_mode}"
             )
+
+
+@app.command("edit-user")
+def edit_user(
+    token: str = typer.Argument(..., help="The token of the user to edit"),
+    priority: int = typer.Option(None, help="New Priority value"),
+    threshold: int = typer.Option(None, help="New Threshold value"),
+    organization: str = typer.Option(None, help="New Organization name"),
+    email: str = typer.Option(None, help="New Email address"),
+    client_type: str = typer.Option(
+        None, help="New Client type (set to NULL if not passed)"
+    ),
+    default_routing_mode: str = typer.Option(
+        None,
+        help="New Routing mode (choices: any, private-first, private-only)",
+    ),
+):
+    """
+    Update a user's details by token, setting any field passed as an argument.
+    """
+    settings = Settings()
+    database = Database(settings)
+
+    updates = {
+        "priority": priority,
+        "threshold": threshold,
+        "organization": organization,
+        "email": email,
+        "client_type": client_type,
+        "default_routing_mode": default_routing_mode,
+    }
+
+    updates = {k: v for k, v in updates.items() if v is not None}
+
+    if not updates:
+        typer.echo("⚠️ No fields provided for update. Nothing changed.")
+        raise typer.Exit(code=0)
+
+    with database.get_session() as session:
+        user = session.query(User).filter(User.token == token).first()
+
+        if not user:
+            typer.echo(f"❌ No user found with token '{token}'")
+            raise typer.Exit(code=1)
+
+        typer.echo(f"📝 Found user '{user.name}' (token={token}). Applying updates...")
+
+        for key, value in updates.items():
+            setattr(user, key, value)
+            typer.echo(f"   -> Updated {key} to '{value}'")
+
+        try:
+            session.commit()
+            typer.echo(f"✅ User '{user.name}' updated successfully!")
+        except IntegrityError as e:
+            session.rollback()
+            typer.echo(f"❌ Failed to update user: {e.orig}")
+            raise typer.Exit(code=1)
+        except Exception as e:
+            session.rollback()
+            typer.echo(f"❌ An unexpected error occurred: {e}")
+            raise typer.Exit(code=1)
 
 
 if __name__ == "__main__":
