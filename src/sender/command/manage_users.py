@@ -70,28 +70,76 @@ def delete_user(
         typer.echo(f"🗑️ User '{user.name}' (token={token}) deleted successfully.")
 
 
-@app.command("list-users")
-def list_users():
+def print_user(user: User):
     """
-    List all users in the database.
+    Helper function to format and print user details.
+    """
+    typer.echo(
+        f"- ID: {user.id}, Token: {user.token}, Name: {user.name}, "
+        f"Org: {user.organization}, Email: {user.email}, "
+        f"Priority: {user.priority}, Threshold: {user.threshold}, "
+        f"ClientType: {user.client_type}, Default Routing Mode: {user.default_routing_mode}"
+    )
+
+
+@app.command("list-users")
+def list_users(
+    token: str = typer.Option(None, "--token", help="Filter by user token"),
+    name: str = typer.Option(None, "--name", help="Filter by user's full name"),
+    organization: str = typer.Option(
+        None, "--organization", help="Filter by organization name"
+    ),
+    email: str = typer.Option(None, "--email", help="Filter by email address"),
+    priority: int = typer.Option(
+        None, "--priority", help="Filter by exact priority value"
+    ),
+    threshold: int = typer.Option(
+        None, "--threshold", help="Filter by exact threshold value"
+    ),
+    client_type: str = typer.Option(
+        None, "--client-type", help="Filter by client type"
+    ),
+    default_routing_mode: str = typer.Option(
+        None,
+        "--default-routing-mode",
+        help="Filter by default routing mode (choices: any, private-first, private-only)",
+    ),
+):
+    """
+    List all users in the database, with optional filtering on any field (SQL WHERE clause).
     """
     settings = Settings()
     database = Database(settings)
 
     with database.get_session() as session:
-        users = session.query(User).all()
+        query = session.query(User)
+
+        filters = {
+            "token": token,
+            "name": name,
+            "organization": organization,
+            "email": email,
+            "priority": priority,
+            "threshold": threshold,
+            "client_type": client_type,
+            "default_routing_mode": default_routing_mode,
+        }
+
+        for key, value in filters.items():
+            if value is not None:
+                column = getattr(User, key)
+                query = query.filter(column == value)
+
+        users = query.all()
+
         if not users:
-            typer.echo("ℹ️ No users found in the database.")
+            typer.echo("ℹ️ No users found matching the criteria.")
             return
 
+        typer.echo("---")
         typer.echo("📋 Users:")
         for user in users:
-            typer.echo(
-                f"- ID: {user.id}, Token: {user.token}, Name: {user.name}, "
-                f"Org: {user.organization}, Email: {user.email}, "
-                f"Priority: {user.priority}, Threshold: {user.threshold}, "
-                f"ClientType: {user.client_type}, Default Routing Mode: {user.default_routing_mode}"
-            )
+            print_user(user)
 
 
 @app.command("edit-user")
