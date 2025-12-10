@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.1] - 2025-12-10
+
+### Added
+- 📊 Add `routing_mode` to usage metrics in database (#53)
+- ✨ Enhanced user management CLI tools (#53)
+
 ## [1.4.0] - 2025-10-06
 
 ### Added
