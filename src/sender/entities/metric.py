@@ -20,6 +20,4 @@ class Metric(Base):
     current_parallel_requests = Column(Integer, nullable=True)
     priority = Column(Integer, nullable=True)
     performance_score = Column(Float, nullable=True)
-    routing_mode = Column(
-        Enum("any", "private-first", "private-only", native_enum=False)
-    )
+    routing_mode = Column(String(length=255))
