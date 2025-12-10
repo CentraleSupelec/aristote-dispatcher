@@ -329,6 +329,7 @@ async def proxy(request: Request, call_next):
         current_parallel_requests=llm_params.current_parallel_requests,
         priority=priority,
         performance_score=llm_params.performance_score,
+        routing_mode=routing_mode,
     )
 
     background_tasks = BackgroundTasks(
