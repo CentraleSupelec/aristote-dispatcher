@@ -144,6 +144,7 @@ class RPCServer:
             llm_params = MessageData(
                 llm_url=vllm_server.url,
                 llm_token=vllm_server.token,
+                llm_organization=vllm_server.organization,
                 strategy=settings.ROUTING_STRATEGY,
                 requeue_count=message.headers.get("x-requeue-count", 0),
                 max_parallel_requests=vllm_server.max_parallel_requests,
@@ -263,6 +264,7 @@ class RPCServer:
             llm_params = MessageData(
                 llm_url=target_server.url,
                 llm_token=target_server.token,
+                llm_organization=target_server.organization,
                 strategy=settings.ROUTING_STRATEGY,
                 requeue_count=message.headers.get("x-requeue-count", 0),
                 max_parallel_requests=target_server.max_parallel_requests,

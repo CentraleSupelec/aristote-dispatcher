@@ -276,6 +276,7 @@ async def proxy(request: Request, call_next):
 
     llm_url = llm_params.llm_url
     llm_token = llm_params.llm_token
+    llm_organization = llm_params.llm_organization
     llm_forwarded_priority = llm_params.forwarded_priority
 
     if llm_url is None:
@@ -319,8 +320,10 @@ async def proxy(request: Request, call_next):
 
     metric = Metric(
         user_name=user.name,
+        user_organization=user.organization,
         model=requested_model,
         server=llm_url,
+        server_organization=llm_organization,
         request_date=start,
         sent_to_llm_date=sent_to_llm_date,
         strategy=llm_params.strategy,
