@@ -1,4 +1,4 @@
-from sqlalchemy import Column, DateTime, Float, ForeignKey, Integer, String
+from sqlalchemy import Column, DateTime, Float, Integer, String
 
 from src.sender.entities.base import Base
 
@@ -6,7 +6,7 @@ from src.sender.entities.base import Base
 class Metric(Base):
     __tablename__ = "metrics"
     id = Column(Integer, primary_key=True, autoincrement=True)
-    user_name = Column(String(length=255), ForeignKey("users.name"), nullable=False)
+    user_name = Column(String(length=255), nullable=False)
     request_date = Column(DateTime)
     sent_to_llm_date = Column(DateTime)
     response_date = Column(DateTime)
