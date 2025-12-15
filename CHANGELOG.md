@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.2] - 2025-12-15
+
+### Added
+- 📊 Add `user_organization`  and `server_organization` to usage metrics in database (#55)
+
+### Fixed
+- 🩹 Removed the foreign key to users in metrics table (#55)
+
 ## [1.4.1] - 2025-12-10
 
 ### Added
