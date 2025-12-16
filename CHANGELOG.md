@@ -7,7 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [1.4.2] - 2025-12-15
+## [v1.4.3] - 2025-12-15
+
+### Fixed
+- 🩹 Metrics table foreign key removal migration (wrong key name was used) (#56)
+
+## [v1.4.2] - 2025-12-15
 
 ### Added
 - 📊 Add `user_organization`  and `server_organization` to usage metrics in database (#55)
@@ -15,13 +20,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - 🩹 Removed the foreign key to users in metrics table (#55)
 
-## [1.4.1] - 2025-12-10
+## [v1.4.1] - 2025-12-10
 
 ### Added
 - 📊 Add `routing_mode` to usage metrics in database (#53)
 - ✨ Enhanced user management CLI tools (#53)
 
-## [1.4.0] - 2025-10-06
+## [v1.4.0] - 2025-10-06
 
 ### Added
 - ✨ Local priority to enable the user to prioritize vllm instances of its organization (#38)
@@ -38,18 +43,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 🩹 Counter for current concurrent requests in a vllm instance is now automatically decremented after some time, to fix
 a bug where decrements are missed (#42)
 
-## [1.3.1] - 2025-08-05
+## [v1.3.1] - 2025-08-05
 
 ### Fixed
 - 🩹 Add information in requeue policy log message (#39)
 
-## [1.3.0] - 2025-07-25
+## [v1.3.0] - 2025-07-25
 
 ### Added
 - ✨ Ping remote LLM servers regularly and exclude them (if possible) if they are not healthy (#31)
 - ✨ Add control on the maximum number of simultaneous requests handled by the gateway, with requeue support for extra requests until remote LLM servers are available (#37)
 
-## [1.2.13]
+## [v1.2.13]
 
 ### Added
 - ✨ Feature to transfer priority to inference server
@@ -59,7 +64,7 @@ a bug where decrements are missed (#42)
 ### Fixed
 - 🐛 Least busy strategy
 
-## [1.2.4]
+## [v1.2.4]
 
 ### Fixed
 - 🩹 Workers/Consumers: Load balancing
@@ -67,7 +72,7 @@ a bug where decrements are missed (#42)
 ### New Contributors
 - 👤 @blanch0t made their first contribution in #12
 
-## [1.2.3]
+## [v1.2.3]
 
 ### Added
 - ✨ Workers/Consumers: Connect to a vLLM protected by a token
@@ -79,7 +84,7 @@ a bug where decrements are missed (#42)
 ### New Contributors
 - 👤 @mohamedalibarkailluin made their first contribution in #13
 
-## [1.1.1]
+## [v1.1.1]
 
 ### Added
 - ✨ Workers: Unprivileged user

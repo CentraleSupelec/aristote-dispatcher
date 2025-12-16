@@ -30,9 +30,11 @@ def upgrade() -> None:
         sa.Column("priority", sa.Integer(), nullable=False),
         sa.Column("threshold", sa.Integer(), nullable=False),
         sa.Column("client_type", sa.String(length=255), nullable=True),
-        sa.PrimaryKeyConstraint("id"),
-        sa.UniqueConstraint("name"),
-        sa.UniqueConstraint("token"),
+        # /!\ constraint names are custom due to historical reasons (tables were managed by hand before this migration)
+        sa.PrimaryKeyConstraint("id", name="users_pkey"),
+        sa.UniqueConstraint("name", name="users_name_unique"),
+        sa.UniqueConstraint("token", name="unique_token"),
+        # /!\ due to historical reasons (tables were managed by hand before this migration)
         if_not_exists=True,
     )
     op.create_table(
@@ -46,11 +48,10 @@ def upgrade() -> None:
         sa.Column("server", sa.String(length=255), nullable=True),
         sa.Column("prompt_tokens", sa.Integer(), nullable=True),
         sa.Column("completion_tokens", sa.Integer(), nullable=True),
-        sa.ForeignKeyConstraint(
-            ["user_name"],
-            ["users.name"],
-        ),
-        sa.PrimaryKeyConstraint("id"),
+        # /!\ constraint names are custom due to historical reasons (tables were managed by hand before this migration)
+        sa.ForeignKeyConstraint(["user_name"], ["users.name"], "fk_user_name"),
+        sa.PrimaryKeyConstraint("id", name="metrics_pkey"),
+        # /!\ due to historical reasons (tables were managed by hand before this migration)
         if_not_exists=True,
     )
 
