@@ -16,5 +16,7 @@ COPY --chown=consumer:consumer ./src/__init__.py src/__init__.py
 COPY --chown=consumer:consumer ./src/consumer src/consumer
 COPY --chown=consumer:consumer ./src/common src/common
 
+ADD consumer-entrypoint.sh .
+ENTRYPOINT  ["/bin/sh", "/app/consumer-entrypoint.sh"]
 
 CMD ["python3", "-m", "src.consumer.main"]
