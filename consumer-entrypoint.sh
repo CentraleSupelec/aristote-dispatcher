@@ -1,9 +1,6 @@
 #!/bin/sh
 set -e
 
-# run migrations
-alembic upgrade head
-
 update-ca-certificates
 
 # print and run image cmd
