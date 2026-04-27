@@ -7,10 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [v1.4.4] - 2025-04-23
+## [v1.5.0] - 2025-04-23
 
 ### Added
-- 📊 Update CA certificates at contaier startup to allow loading mounted certificates at /usr/local/share/ca-certificates (#58)
+- 📊 Update CA certificates at container startup to allow loading mounted certificates at /usr/local/share/ca-certificates (#58)
 
 ## [v1.4.3] - 2025-12-15
 
